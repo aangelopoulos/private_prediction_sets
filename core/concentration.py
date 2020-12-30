@@ -27,7 +27,7 @@ def get_cdf_of_process_supremum(num_replicates, m, scale):
     return _cdf
 
 if __name__ == "__main__":
-    num_replicates = 100000
+    num_replicates = 1000000
     M = 1000 # max number of bins
     sens = 2
     epsilon = 5 

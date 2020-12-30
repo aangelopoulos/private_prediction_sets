@@ -33,12 +33,40 @@ def plot_beta_inv(n, m, scale, num_replicates=100000):
     plt.ylabel(r'$\beta^{-1}(\alpha)$')
     plt.savefig('./beta_inv_plot.pdf')
 
+def generate_scores(n):
+    return np.random.uniform(size=(n,))
+
+def private_hist(scores,epsilon,bins):
+    scale = 2/epsilon
+    hist, _ = np.histogram(scores, bins=bins)
+    hist = hist + np.random.laplace(loc=0.0,scale=scale,size=hist.shape)
+    cumsum = np.cumsum(hist)
+    return hist, cumsum
+
+def hist_2_cdf(cumsum, bins):
+    def _cdf(t):
+        return cumsum[np.searchsorted(bins[:-2], t)]/cumsum[-1]
+    return _cdf
+
+def get_private_quantile(scores, alpha, epsilon, bins, num_replicates):
+    hist, cumsum = private_hist(scores, epsilon, bins)
+    ecdf = hist_2_cdf(cumsum, bins)
+    def _condition(q):
+        return ecdf(q) - (1 - alpha + beta_inv(alpha, scores.shape[0], np.searchsorted(bins[:-1],q), 2/epsilon, num_replicates=num_replicates) )
+    return brentq(_condition, 1e-5, 1-1e-5)
+    
+
 if __name__ == "__main__":
     M = 1000 # max number of bins
-    m = 10
-    n = 1000
-    sens = 2
-    epsilon = 5 
-    scale = sens/epsilon 
-    plot_beta_inv(n, m, scale)
+    #m = 10
+    num_replicates=100000
+    n = 10000
+    alpha = 0.05
+    epsilon = 5
+    bins = np.linspace(0,1,M)
+    #plot_beta_inv(n, m, scale)
+    scores = generate_scores(n)
+    qhat = get_private_quantile(scores, alpha,  epsilon, bins, num_replicates)
+    print(qhat)
+    # we would like qhat to be larger than 1-alpha
     print("hi")
