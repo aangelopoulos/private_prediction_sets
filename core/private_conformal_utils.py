@@ -52,9 +52,9 @@ def get_private_quantile(scores, alpha, epsilon, bins, num_replicates):
     hist, cumsum = private_hist(scores, epsilon, bins)
     ecdf = hist_2_cdf(cumsum, bins)
     def _condition(q):
-        return ecdf(q) - (1 - alpha + beta_inv(alpha, scores.shape[0], np.searchsorted(bins[:-1],q), 2/epsilon, num_replicates=num_replicates) )
+        #madaptive = np.searchsorted(bins[:-1],q)
+        return ecdf(q) - (1 - alpha + beta_inv(alpha, scores.shape[0], hist.shape[0]-1, 2/epsilon, num_replicates=num_replicates) )
     return brentq(_condition, 1e-5, 1-1e-5)
-    
 
 if __name__ == "__main__":
     M = 1000 # max number of bins
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     num_replicates=100000
     n = 10000
     alpha = 0.05
-    epsilon = 5
+    epsilon = 5 # removal definition, 5 is large.  usually we think of epsilon as 1 or 2.   
     bins = np.linspace(0,1,M)
     #plot_beta_inv(n, m, scale)
     scores = generate_scores(n)
