@@ -1,13 +1,15 @@
 import numpy as np
 import pickle as pkl
 from tqdm import tqdm
+from scipy.stats import binom
 import pdb
-
-def cdf_of_sup_of_laplacian_process(m,eps):
-    pass
 
 def dkw(n,t):
     return 2*np.exp(-2*n*t*t)
+
+def pointwise_cdf_bound(n,alpha):
+    alphaprime = alpha - np.sqrt( np.log( 1/alpha ) / (2*n) )
+    return binom.cdf(alphaprime*n,n,alpha)
 
 def sup_of_laplacian_process(m,scale): # variance var, length of process m.
     L = np.random.laplace(loc=0.0, scale=scale, size=(m,))
