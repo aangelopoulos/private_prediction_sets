@@ -50,11 +50,11 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma1, 
 
     return corrects.float().mean().item(), torch.tensor(sizes), shat, g1, g2
 
-def plot_histograms(df_list,alpha,Ms,unit,num_calib):
+def plot_histograms(df_list,alpha,Ms,unit,num_calib,privatemodel):
     fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
 
     mincvg = min([df['coverage'].min() for df in df_list])
-    maxcvg = min([df['coverage'].max() for df in df_list])
+    maxcvg = max([df['coverage'].max() for df in df_list])
 
     cvg_bins = None #np.arange(mincvg, maxcvg, 0.001) 
     
@@ -74,33 +74,34 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     
     axs[0].set_xlabel('coverage')
     #axs[0].locator_params(axis='x', nbins=5)
-    axs[0].set_ylabel('density')
+    axs[0].set_xlim([min(mincvg,1-alpha-0.02), maxcvg])
+    axs[0].set_ylabel('probability')
     #axs[0].set_yticks([0,100])
-    #axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
+    axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].set_xscale('log')
     axs[1].legend()
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
-    plt.savefig( (f'outputs/histograms/opt_bins_{alpha}_{epsilon}_{num_calib}_imagenet_histograms').replace('.','_') + '.pdf')
+    private_str = 'privatemodel' if privatemodel else 'nonprivatemodel'
+    plt.savefig( (f'outputs/histograms/cifar_{private_str}_opt_bins_{alpha}_{epsilon}_{num_calib}_histograms').replace('.','_') + '.pdf')
 
-def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size, imagenet_val_dir):
+def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size, cifar10_root, privatemodel):
     df_list = []
     for M in Ms:
         score_bins = np.linspace(0,1,M)
-        fname = f'.cache/opt_{alpha}_{epsilon}_{opt_gamma1}_{opt_gamma2}_{num_calib}_{M}bins_dataframe.pkl'
+        fname = f'.cache/opt_{privatemodel}_{alpha}_{epsilon}_{opt_gamma1}_{opt_gamma2}_{num_calib}_{M}bins_dataframe.pkl'
 
         df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$", "$\\gamma_1$", "$\\gamma_2$"])
         try:
             df = pd.read_pickle(fname)
         except FileNotFoundError:
-            dataset_precomputed = get_logits_dataset('ResNet152', 'Imagenet', imagenet_val_dir)
+            dataset_precomputed = get_logits_dataset(privatemodel, 'CIFAR10', cifar10_root)
             print('Dataset loaded')
             
-            classes_array = get_imagenet_classes()
+            classes_array = get_cifar10_classes()
             T = platt_logits(dataset_precomputed)
-            
             logits, labels = dataset_precomputed.tensors
             scores = (logits/T.cpu()).softmax(dim=1)
 
@@ -124,7 +125,7 @@ def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_
 
         df_list = df_list + [df]
 
-    plot_histograms(df_list,alpha,Ms,unit,num_calib)
+    plot_histograms(df_list,alpha,Ms,unit,num_calib,privatemodel)
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
     calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
@@ -152,17 +153,18 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    imagenet_val_dir = '/scratch/group/ilsvrc/val'
+    cifar10_root = './data/cifar10'
+    privatemodel = True 
 
     alpha = 0.1
-    epsilon = 1
+    epsilon = 3.29 # epsilon of the trained model 
     opt_gamma1 = np.linspace(0.98,0.999,4)
     opt_gamma2 = np.logspace(-4,-2,4)
-    num_calib = 30000 
+    num_calib = 5000 
     num_trials = 100 
     
     unit = int(np.floor(np.sqrt(num_calib)))
-    Ms = np.floor(np.array([0.2*unit,0.5*unit,unit,2*unit,10*unit,100*unit])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
+    Ms = np.floor(np.array([0.2*unit, 0.5*unit,unit,2*unit,10*unit,50*unit])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
     num_replicates_process =100000
 
-    experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
+    experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size=128, cifar10_root=cifar10_root, privatemodel=privatemodel)

@@ -23,14 +23,14 @@ def get_conformal_scores(scores, labels):
     return conformal_scores 
 
 def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma1, opt_gamma2, score_bins, num_replicates_process):
-    best_gammas = None
+    best_gammas = (opt_gamma1[0], opt_gamma2[0]) 
     best_shat = scores.max()
     for i in range(opt_gamma1.shape[0]):
         for j in range(opt_gamma2.shape[0]):
             if opt_gamma1[i] + opt_gamma2[j] < 1:
                 gammas = (opt_gamma1[i], opt_gamma2[j])
                 shat = get_private_quantile(scores, alpha, epsilon, gammas, score_bins, num_replicates_process)
-                if shat < best_shat:
+                if shat <= best_shat:
                     best_shat = shat
                     best_gammas = gammas 
     return best_shat, best_gammas[0], best_gammas[1] 
@@ -54,23 +54,25 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
     fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
 
     mincvg = min([df['coverage'].min() for df in df_list])
-    maxcvg = min([df['coverage'].max() for df in df_list])
+    maxcvg = max([df['coverage'].max() for df in df_list])
 
-    cvg_bins = None #np.arange(mincvg, maxcvg, 0.001) 
+    cvg_bins = np.arange(mincvg, maxcvg+0.01, 0.001) 
+    pdb.set_trace()
     
     for i in range(len(df_list)):
         df = df_list[i]
         epsilon = epsilons[i]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=True)
+        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=False, log=True)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
         lofb = sizes.min() - float(d)/2
         rolb = sizes.max() + float(d)/2
-        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=True)
+        #axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False)
+        axs[1].hist(sizes, 10, label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False)
     
     axs[0].set_xlabel('coverage')
     axs[0].locator_params(axis='x', nbins=5)
@@ -153,13 +155,13 @@ if __name__ == "__main__":
     imagenet_val_dir = '/scratch/group/ilsvrc/val'
 
     alpha = 0.1
-    epsilons = [0.5,1,2,5]
+    epsilons = [0.01,0.1,0.5,1,5,10]
     opt_gamma1 = np.linspace(0.98,0.999,4)
     opt_gamma2 = np.logspace(-4,-2,4)
     num_calib = 30000 
-    num_trials = 100 
+    num_trials = 10 
     
-    M = int(np.floor(np.sqrt(num_calib))) # max number of bins
+    M = int(np.floor(0.5*np.sqrt(num_calib))) # max number of bins
     num_replicates_process =100000
     score_bins = np.linspace(0,1,M)
 

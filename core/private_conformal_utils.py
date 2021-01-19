@@ -73,7 +73,9 @@ def get_private_quantile(scores, alpha, epsilon, gammas, bins, num_replicates):
     def _laplace_condition(q):
         return sup_lproc_cdf(q) - (1-g3*alpha)
     laplace_quantile = brentq(_laplace_condition,0,n)
-    adjusted_quantile = (1-get_adjusted_alpha_cdf(n, alpha, g1, g2) + laplace_quantile/n)
+    adjusted_quantile = 1-get_adjusted_alpha_cdf(n, alpha, g1, g2) + laplace_quantile/n
+    if adjusted_quantile > 1-1e-5:
+        return bins[-1]
     def _condition(q):
         return ecdf(q) - adjusted_quantile
     qhat = brentq(_condition, 1e-5, 1-1e-5)
