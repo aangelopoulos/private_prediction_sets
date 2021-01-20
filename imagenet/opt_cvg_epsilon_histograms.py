@@ -159,9 +159,9 @@ if __name__ == "__main__":
     opt_gamma1 = np.linspace(0.98,0.999,4)
     opt_gamma2 = np.logspace(-4,-2,4)
     num_calib = 30000 
-    num_trials = 10 
+    num_trials = 100
     
-    M = int(np.floor(0.5*np.sqrt(num_calib))) # max number of bins
+    M = int(np.floor(5*np.sqrt(num_calib))) # max number of bins
     num_replicates_process =100000
     score_bins = np.linspace(0,1,M)
 
