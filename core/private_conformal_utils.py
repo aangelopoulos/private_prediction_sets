@@ -56,24 +56,25 @@ def hist_2_cdf(cumsum, bins):
             return cumsum[np.searchsorted(bins, t)-1]/cumsum[-1]
     return _cdf
 
-def get_adjusted_alpha_cdf(n, alpha, g1, g2):
-    def _condition(mprime):
-        return beta.cdf(1-alpha*g1,mprime,n-mprime+1) - g2*alpha
-    return 1-brentq(_condition, 1, n)/n
+def get_adjusted_alpha_cdf(n, alpha, gamma):
+    return 1-(n+1)*(1-alpha)/(n*(1-gamma*alpha))
 
-def get_private_quantile(scores, alpha, epsilon, gammas, bins, num_replicates):
+#def get_adjusted_alpha_cdf(n, alpha, g1, g2):
+#    def _condition(mprime):
+#        return beta.cdf(1-alpha*g1,mprime,n-mprime+1) - g2*alpha
+#    return 1-brentq(_condition, 1, n)/n
+
+def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
     hist, cumsum = private_hist(scores, epsilon, bins)
     ecdf = hist_2_cdf(cumsum, bins)
     n = scores.shape[0]
     m = bins.shape[0] - 1
     scale = 2/epsilon
-    g1, g2 = gammas
-    g3 = 1-g1-g2
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
     def _laplace_condition(q):
-        return sup_lproc_cdf(q) - (1-g3*alpha)
+        return sup_lproc_cdf(q) - (1-gamma*alpha)
     laplace_quantile = brentq(_laplace_condition,0,n)
-    adjusted_quantile = 1-get_adjusted_alpha_cdf(n, alpha, g1, g2) + laplace_quantile/n
+    adjusted_quantile = 1-get_adjusted_alpha_cdf(n, alpha, gamma) + laplace_quantile/n
     if adjusted_quantile > 1-1e-5:
         return bins[-1]
     def _condition(q):
@@ -82,18 +83,19 @@ def get_private_quantile(scores, alpha, epsilon, gammas, bins, num_replicates):
     bin_idx = min(np.argmax(bins > qhat)+1,bins.shape[0]-1) # handle rounding up
     return bins[bin_idx] 
 
-def get_mstar(n, alpha, epsilon, gammas, num_replicates):
+def get_mstar(n, alpha, epsilon, gamma, num_replicates):
     candidates = np.arange(10,int(0.1*n),50)
     scores = np.random.rand(n,1)
     best_m = 10
     best_q = 1
     print(r'Calculate $M^*$')
     for m in tqdm(candidates):
-       q = get_private_quantile(scores, alpha, epsilon, gammas, np.linspace(0,1,m), num_replicates)
-       if q < best_q:
-           best_q = q
-           best_m = m
+        q = get_private_quantile(scores, alpha, epsilon, gamma, np.linspace(0,1,m), num_replicates)
+        if q < best_q:
+            best_q = q
+            best_m = m
     print(best_m)
+    print(best_q)
     return best_m
 
 if __name__ == "__main__":
@@ -106,11 +108,10 @@ if __name__ == "__main__":
     bins = np.linspace(0,1,M)
     #plot_beta_inv(n, m, scale)
     scores = generate_scores(n)
-    gammas = (0.9,1/50)
-    qhat = get_private_quantile(scores, alpha,  epsilon, gammas, bins, num_replicates)
+    gamma = 0.01
+    qhat = get_private_quantile(scores, alpha,  epsilon, gamma, bins, num_replicates)
     print(qhat)
-    mstar = get_mstar(n, alpha, epsilon, gammas, num_replicates)
+    mstar = get_mstar(n, alpha, epsilon, gamma, num_replicates)
     print(mstar)
-    pdb.set_trace()
     # we would like qhat to be larger than 1-alpha
     print("hi")

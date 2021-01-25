@@ -22,20 +22,18 @@ def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
     return conformal_scores 
 
-def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma1, opt_gamma2, score_bins, num_replicates_process):
-    best_gammas = (opt_gamma1[0], opt_gamma2[0]) # dummy initialization
+def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process):
+    best_gamma = opt_gamma[0] # dummy initialization
     best_shat = scores.max()
-    for i in range(opt_gamma1.shape[0]):
-        for j in range(opt_gamma2.shape[0]):
-            if opt_gamma1[i] + opt_gamma2[j] < 1:
-                gammas = (opt_gamma1[i], opt_gamma2[j])
-                shat = get_private_quantile(scores, alpha, epsilon, gammas, score_bins, num_replicates_process)
-                if shat <= best_shat:
-                    best_shat = shat
-                    best_gammas = gammas 
-    return best_shat, best_gammas[0], best_gammas[1] 
+    for i in range(opt_gamma.shape[0]):
+        gamma = opt_gamma[i] 
+        shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+        if shat <= best_shat:
+            best_shat = shat
+            best_gamma = gamma 
+    return best_shat, best_gamma 
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma1, opt_gamma2, score_bins, num_replicates_process, num_calib, batch_size):
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process, num_calib, batch_size):
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
     conformal_scores = conformal_scores[perm]
@@ -43,12 +41,12 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma1, 
     calib_conformal_scores, val_conformal_scores = (1-conformal_scores[0:num_calib], 1-conformal_scores[num_calib:])
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
 
-    shat, g1, g2 = get_shat_from_scores_private_opt(calib_conformal_scores, alpha, epsilon, opt_gamma1, opt_gamma2, score_bins, num_replicates_process)
+    shat, gamma = get_shat_from_scores_private_opt(calib_conformal_scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process)
 
     corrects = (val_conformal_scores) < shat 
     sizes = ((val_raw_scores) < shat).sum(dim=1)
 
-    return corrects.float().mean().item(), torch.tensor(sizes), shat, g1, g2
+    return corrects.float().mean().item(), torch.tensor(sizes), shat, gamma
 
 def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
@@ -89,11 +87,11 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     plt.tight_layout()
     plt.savefig( 'outputs/histograms/experiment3.pdf')
 
-def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size, imagenet_val_dir):
+def experiment(alpha, epsilon, opt_gamma, num_calib, Ms, unit, num_replicates_process, batch_size, imagenet_val_dir):
     df_list = []
     for M in Ms:
         score_bins = np.linspace(0,1,M)
-        fname = f'.cache/opt_{alpha}_{epsilon}_{opt_gamma1}_{opt_gamma2}_{num_calib}_{M}bins_dataframe.pkl'
+        fname = f'.cache/opt_{alpha}_{epsilon}_{opt_gamma[0]}_{opt_gamma[1]}_{num_calib}_{M}bins_dataframe.pkl'
 
         df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$", "$\\gamma_1$", "$\\gamma_2$"])
         try:
@@ -112,14 +110,13 @@ def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_
                 conformal_scores = get_conformal_scores(scores, labels)
                 local_df_list = []
                 for i in tqdm(range(num_trials)):
-                    cvg, szs, shat, g1, g2 = trial_precomputed(conformal_scores, scores, alpha, epsilon, opt_gamma1, opt_gamma2, score_bins, num_replicates_process, num_calib, batch_size)
+                    cvg, szs, shat, gamma = trial_precomputed(conformal_scores, scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process, num_calib, batch_size)
                     dict_local = {"$\\hat{s}$": shat,
                                     "coverage": cvg,
                                     "sizes": [szs],
                                     "$\\alpha$": alpha,
                                     "$\\epsilon$": epsilon,
-                                    "$\\gamma_1$": g1,
-                                    "$\\gamma_2$": g2
+                                    "$\\gamma$": gamma
                                  }
                     df_local = pd.DataFrame(dict_local)
                     local_df_list = local_df_list + [df_local]
@@ -160,15 +157,14 @@ if __name__ == "__main__":
 
     alpha = 0.1
     epsilon = 1
-    opt_gamma1 = np.linspace(0.98,0.999,4)
-    opt_gamma2 = np.logspace(-4,-2,4)
+    opt_gamma = np.logspace(-4,-0.5,50)
     num_calib = 30000 
     num_trials = 100 
     num_replicates_process =100000
     
     unit = num_calib * (epsilon ** 2)#int(np.floor(np.sqrt(num_calib)))
 
-    Mstar = get_mstar(num_calib, alpha, epsilon, (0.98,1e-2), num_replicates_process) # max number of bins
+    Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
     Ms = np.floor(np.array([np.sqrt(unit),0.1*unit,0.5*unit,1*unit,Mstar])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
 
-    experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
+    experiment(alpha, epsilon, opt_gamma, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
