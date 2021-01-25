@@ -57,62 +57,69 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma1, 
 
     return corrects.float().mean().item(), torch.tensor(sizes), shat, g1, g2
 
-def plot_histograms(df_list,alpha,M,unit,num_calib,privatemodel,privateconformal,num_trials):
-    fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
+def plot_histograms(df_list,alpha):
+    fig_cvg, axs_cvg = plt.subplots(nrows=2,ncols=2,figsize=(6,6))
+    fig_sz, axs_sz = plt.subplots(nrows=2,ncols=2,figsize=(6,6))
 
     mincvg = min([df['coverage'].min() for df in df_list])
     maxcvg = max([df['coverage'].max() for df in df_list])
 
-    cvg_bins = np.arange(1-alpha-0.02,1.01,0.005)#None #np.arange(mincvg, maxcvg, 0.001) 
-    
-    if privateconformal:
-        for i in range(len(df_list)):
-            df = df_list[i]
-            print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
-            # Use the same binning for everybody 
-            weights = np.ones((len(df),))/len(df)
-            axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, density=False, weights=weights)
+    cvg_bins = np.arange(1-alpha-0.02,1.01,0.005)
 
-            # Sizes will be 10 times as big as risk, since we pool it over runs.
-            sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
-            d = np.diff(np.unique(sizes)).min()
-            lofb = sizes.min() - float(d)/2
-            rolb = sizes.max() + float(d)/2
-            weights = np.ones_like(sizes)/sizes.shape[0]
-            #axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"M={M/unit:.2f}" + r"$\times \sqrt{n}$", alpha=0.7, density=True)
-            axs[1].hist(sizes, label=f"M={M/unit:.2f}" + r"$\times \sqrt{n}$", alpha=0.7, density=False, weights=weights)
-    else:
-        df = df_list[0]
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, density=False)
+    for i in range(len(df_list)):
+        df = df_list[i]
+        print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
+        # Use the same binning for everybody 
         weights = np.ones((len(df),))/len(df)
+        axs_cvg[i % 2, i // 2].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, density=False, weights=weights)
+        axs_cvg[i % 2, i // 2].set_xlim([1-alpha-0.02, 1.01])
+        axs_cvg[i % 2, i // 2].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
+
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
         lofb = sizes.min() - float(d)/2
-        rolb = sizes.max() + float(d)/2
+        rolb = 11.5#sizes.max() + float(d)/2
+        size_bins = np.arange(lofb,rolb,d)
+        
         weights = np.ones_like(sizes)/sizes.shape[0]
-        #axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"M={M/unit:.2f}" + r"$\times \sqrt{n}$", alpha=0.7, density=True)
-        axs[1].hist(sizes, alpha=0.7, density=False)
+        axs_sz[i % 2, i // 2].hist(sizes, size_bins, alpha=0.7, density=False, weights=weights)
+        axs_sz[i % 2, i // 2].set_xlim([0.5,10.5])
 
-    axs[0].set_xlabel('coverage')
-    #axs[0].locator_params(axis='x', nbins=5)
-    axs[0].set_xlim([1-alpha-0.02, 1.01])
-    #axs[0].set_ylim([0,num_trials])
-    #axs[0].set_yscale('log')
-    axs[0].set_ylabel('probability')
-    #axs[0].set_yticks([0,100])
-    axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
-    axs[1].set_xlabel('size')
-    axs[1].set_xlim([0.5,10.5])
-    #axs[1].set_yscale('log')
-    #axs[1].set_xscale('log')
+    for i in range(2):
+        for j in range(2):
+            sns.despine(ax=axs_cvg[i,j],top=True,right=True)
+            sns.despine(ax=axs_sz[i,j],top=True,right=True)
+            axs_cvg[i,j].locator_params(axis='y',nbins=4)
+            axs_sz[i,j].locator_params(axis='y',nbins=4)
 
-    sns.despine(ax=axs[0],top=True,right=True)
-    sns.despine(ax=axs[1],top=True,right=True)
-    plt.tight_layout()
-    privatemodel_str = 'privatemodel' if privatemodel else 'nonprivatemodel'
-    privateconformal_str = 'privateconformal' if privateconformal else 'nonprivateconformal'
-    plt.savefig( f'outputs/histograms/experiment1.pdf')
+            if i == 0 and j == 0:
+                axs_cvg[i,j].set_title('no')
+                axs_cvg[i,j].set_ylabel('no')
+                axs_sz[i,j].set_title('no')
+                axs_sz[i,j].set_ylabel('no')
+
+            if j == 0 and i == 1:
+                axs_cvg[i,j].set_ylabel('yes')
+                axs_sz[i,j].set_ylabel('yes')
+
+            if j == 1 and i == 0:
+                axs_cvg[i,j].set_title('yes')
+                axs_sz[i,j].set_title('yes')
+
+    plt.figure(fig_cvg.number)
+    major_fontsize = 14
+    plt.tight_layout(rect=[0.05,0.05,0.95,0.95])
+    plt.text(1.05,1.2,'private conformal', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[0,0].transAxes, fontsize=major_fontsize)
+    plt.text(-0.4,-0.2,'private model', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[0,0].transAxes, rotation=90, rotation_mode='anchor', fontsize=major_fontsize)
+    plt.text(1.1,-0.2,'coverage', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[1,0].transAxes, fontsize=major_fontsize)
+    plt.savefig('outputs/histograms/experiment4_coverage.pdf')
+    plt.figure(fig_sz.number)
+    plt.tight_layout(rect=[0.05,0.05,0.95,0.95])
+    plt.text(1.1,1.2,'private conformal', horizontalalignment='center', verticalalignment='top', transform=axs_sz[0,0].transAxes, fontsize=major_fontsize)
+    plt.text(-0.5,-0.2,'private model', horizontalalignment='center', verticalalignment='top', transform=axs_sz[0,0].transAxes, rotation=90, rotation_mode='anchor', fontsize=major_fontsize)
+    plt.text(1.1,-0.2,'size', horizontalalignment='center', verticalalignment='top', transform=axs_sz[1,0].transAxes, fontsize=major_fontsize)
+    plt.savefig('outputs/histograms/experiment4_size.pdf')
 
 def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, M, unit, num_replicates_process, batch_size, cifar10_root, privatemodel, privateconformal):
     df_list = []
@@ -148,10 +155,11 @@ def experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, M, unit, num_r
                 local_df_list = local_df_list + [df_local]
             df = pd.concat(local_df_list, axis=0, ignore_index=True)
             df.to_pickle(fname)
+    return df
 
-    df_list = df_list + [df]
+    #df_list = df_list + [df]
 
-    plot_histograms(df_list,alpha,M,unit,num_calib,privatemodel,privateconformal,num_trials)
+    #plot_histograms(df_list,alpha,M,unit,num_calib,privatemodel,privateconformal,num_trials)
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
     calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
@@ -180,8 +188,8 @@ if __name__ == "__main__":
     fix_randomness(seed=0)
 
     cifar10_root = './data/cifar10'
-    privateconformal = True 
-    privatemodel = True
+    privateconformals = [False, True] 
+    privatemodels = [False, True]
 
     alpha = 0.1
     epsilon = 3.29 # epsilon of the trained model 
@@ -192,7 +200,10 @@ if __name__ == "__main__":
     num_replicates_process =100000
     
     unit = int(np.floor(np.sqrt(num_calib)))
-    M = get_mstar(num_calib, alpha, epsilon, (0.98,1e-2), num_replicates_process) #np.floor(5*unit).astype(int)
-    print(M)
+    M = get_mstar(num_calib, alpha, epsilon, (0.98,1e-2), num_replicates_process)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
 
-    experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, M, unit, num_replicates_process, batch_size=128, cifar10_root=cifar10_root, privatemodel=privatemodel, privateconformal=privateconformal)
+    df_list = []
+    for privateconformal in privateconformals:
+        for privatemodel in privatemodels:
+            df_list = df_list + [experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, M, unit, num_replicates_process, batch_size=128, cifar10_root=cifar10_root, privatemodel=privatemodel, privateconformal=privateconformal)]
+    plot_histograms(df_list,alpha)

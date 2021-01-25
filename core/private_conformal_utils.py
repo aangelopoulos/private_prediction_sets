@@ -82,19 +82,35 @@ def get_private_quantile(scores, alpha, epsilon, gammas, bins, num_replicates):
     bin_idx = min(np.argmax(bins > qhat)+1,bins.shape[0]-1) # handle rounding up
     return bins[bin_idx] 
 
+def get_mstar(n, alpha, epsilon, gammas, num_replicates):
+    candidates = np.arange(10,int(0.1*n),50)
+    scores = np.random.rand(n,1)
+    best_m = 10
+    best_q = 1
+    print(r'Calculate $M^*$')
+    for m in tqdm(candidates):
+       q = get_private_quantile(scores, alpha, epsilon, gammas, np.linspace(0,1,m), num_replicates)
+       if q < best_q:
+           best_q = q
+           best_m = m
+    print(best_m)
+    return best_m
+
 if __name__ == "__main__":
-    M = 10 # max number of bins
+    M = 100 # max number of bins
     #m = 10
     num_replicates=100000
     n = 1000
     alpha = 0.1
-    epsilon = 1 # removal definition, 5 is large.  usually we think of epsilon as 1 or 2.   
+    epsilon = 2 # removal definition, 5 is large.  usually we think of epsilon as 1 or 2.   
     bins = np.linspace(0,1,M)
     #plot_beta_inv(n, m, scale)
     scores = generate_scores(n)
     gammas = (0.9,1/50)
     qhat = get_private_quantile(scores, alpha,  epsilon, gammas, bins, num_replicates)
     print(qhat)
+    mstar = get_mstar(n, alpha, epsilon, gammas, num_replicates)
+    print(mstar)
     pdb.set_trace()
     # we would like qhat to be larger than 1-alpha
     print("hi")

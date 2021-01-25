@@ -57,26 +57,27 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
     maxcvg = max([df['coverage'].max() for df in df_list])
 
     cvg_bins = np.arange(mincvg, maxcvg+0.01, 0.001) 
-    pdb.set_trace()
     
     for i in range(len(df_list)):
         df = df_list[i]
+        weights = np.ones((len(df),))/len(df)
         epsilon = epsilons[i]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=False, log=True)
+        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=False, weights=weights)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
         lofb = sizes.min() - float(d)/2
         rolb = sizes.max() + float(d)/2
+        weights = np.ones_like(sizes)/sizes.shape[0]
         #axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False)
-        axs[1].hist(sizes, 10, label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False)
+        axs[1].hist(sizes, 10, label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False, weights=weights)
     
     axs[0].set_xlabel('coverage')
     axs[0].locator_params(axis='x', nbins=5)
-    axs[0].set_ylabel('density')
+    axs[0].set_ylabel('probability')
     #axs[0].set_yticks([0,100])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
@@ -155,14 +156,15 @@ if __name__ == "__main__":
     imagenet_val_dir = '/scratch/group/ilsvrc/val'
 
     alpha = 0.1
-    epsilons = [0.1,0.5,1,5,10]
+    epsilons = [0.5,1,5,10]
     opt_gamma1 = np.linspace(0.98,0.999,4)
     opt_gamma2 = np.logspace(-4,-2,4)
     num_calib = 30000 
     num_trials = 100
-    
-    M = int(np.floor(5*np.sqrt(num_calib))) # max number of bins
     num_replicates_process =100000
+    
+    M = get_mstar(num_calib, alpha, epsilons[1], (0.98,1e-2), num_replicates_process) # max number of bins
+
     score_bins = np.linspace(0,1,M)
 
     experiment(alpha, epsilons, opt_gamma1, opt_gamma2, num_calib, score_bins, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)

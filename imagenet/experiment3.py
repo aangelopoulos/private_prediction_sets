@@ -63,22 +63,26 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
         M = Ms[i]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7)#, density=True)
+        weights = np.ones((len(df),))/len(df)
+        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)#, density=True)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
         lofb = sizes.min() - float(d)/2
         rolb = sizes.max() + float(d)/2
-        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"M={M/unit:.2f}" + r"$\times \sqrt{n}$", alpha=0.7, density=True)
+        weights = np.ones_like(sizes)/sizes.shape[0]
+        mstar_str = ''
+        if i == len(df_list)-1:
+            mstar_str = r'$ (M^*)$'
+        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"M={M/unit:.4f}" + r"$\times n\epsilon^2$" + mstar_str, alpha=0.7, weights=weights)
+        #axs[1].hist(sizes, label=f"M={M/unit:.4f}" + r"$\times n\epsilon^2$" + mstar_str, alpha=0.7, weights=weights)
     
     axs[0].set_xlabel('coverage')
-    #axs[0].locator_params(axis='x', nbins=5)
     axs[0].set_ylabel('density')
-    #axs[0].set_yticks([0,100])
-    #axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
+    axs[0].set_xlim([1-alpha-0.002,None])
+    axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
-    axs[1].set_xscale('log')
     axs[1].legend()
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
@@ -160,9 +164,11 @@ if __name__ == "__main__":
     opt_gamma2 = np.logspace(-4,-2,4)
     num_calib = 30000 
     num_trials = 100 
-    
-    unit = int(np.floor(np.sqrt(num_calib)))
-    Ms = np.floor(np.array([0.2*unit,0.5*unit,unit,2*unit,10*unit,100*unit])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
     num_replicates_process =100000
+    
+    unit = num_calib * (epsilon ** 2)#int(np.floor(np.sqrt(num_calib)))
+
+    Mstar = get_mstar(num_calib, alpha, epsilon, (0.98,1e-2), num_replicates_process) # max number of bins
+    Ms = np.floor(np.array([np.sqrt(unit),0.1*unit,0.5*unit,1*unit,Mstar])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
 
     experiment(alpha, epsilon, opt_gamma1, opt_gamma2, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)

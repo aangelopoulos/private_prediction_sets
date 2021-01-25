@@ -1,3 +1,5 @@
+import os
+dir_path = os.path.dirname(os.path.realpath(__file__))
 import numpy as np
 import pickle as pkl
 from tqdm import tqdm
@@ -17,7 +19,7 @@ def sup_of_laplacian_process(m,scale): # variance var, length of process m.
     return np.max(np.abs(cumsum))
 
 def get_cdf_of_process_supremum(num_replicates, m, scale):
-    fname = f'.cache/{num_replicates}_{m}_{scale}_replicates.pkl'
+    fname = dir_path + f'/.cache/{num_replicates}_{m}_{scale}_replicates.pkl'
     try:
         replicates = pkl.load( open(fname, 'rb') )
     except:
