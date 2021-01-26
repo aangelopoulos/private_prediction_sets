@@ -93,17 +93,11 @@ def plot_histograms(df_list,alpha,M,unit,num_calib,privatemodel,privateconformal
         axs[1].hist(sizes, alpha=0.7, density=False)
 
     axs[0].set_xlabel('coverage')
-    #axs[0].locator_params(axis='x', nbins=5)
     axs[0].set_xlim([1-alpha-0.02, 1.01])
-    #axs[0].set_ylim([0,num_trials])
-    #axs[0].set_yscale('log')
     axs[0].set_ylabel('probability')
-    #axs[0].set_yticks([0,100])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].set_xlim([0.5,10.5])
-    #axs[1].set_yscale('log')
-    #axs[1].set_xscale('log')
 
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)

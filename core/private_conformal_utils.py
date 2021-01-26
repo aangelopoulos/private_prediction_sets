@@ -40,7 +40,7 @@ def generate_scores(n):
     return np.random.uniform(size=(n,))
 
 def private_hist(scores,epsilon,bins):
-    scale = 2/epsilon
+    scale = 1/epsilon
     hist, _ = np.histogram(scores, bins=bins)
     hist = hist + np.random.laplace(loc=0.0,scale=scale,size=hist.shape)
     cumsum = np.cumsum(hist)
@@ -69,7 +69,7 @@ def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
     ecdf = hist_2_cdf(cumsum, bins)
     n = scores.shape[0]
     m = bins.shape[0] - 1
-    scale = 2/epsilon
+    scale = 2*n/(epsilon*(n-1))
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
     def _laplace_condition(q):
         return sup_lproc_cdf(q) - (1-gamma*alpha)
