@@ -111,13 +111,13 @@ def plot_histograms(df_list,alpha):
     plt.text(1.05,1.2,'private conformal', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[0,0].transAxes, fontsize=major_fontsize)
     plt.text(-0.4,-0.2,'private model', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[0,0].transAxes, rotation=90, rotation_mode='anchor', fontsize=major_fontsize)
     plt.text(1.1,-0.2,'coverage', horizontalalignment='center', verticalalignment='top', transform=axs_cvg[1,0].transAxes, fontsize=major_fontsize)
-    plt.savefig('outputs/histograms/experiment4_coverage.pdf')
+    plt.savefig('outputs/histograms/experiment2_coverage.pdf')
     plt.figure(fig_sz.number)
     plt.tight_layout(rect=[0.05,0.05,0.95,0.95])
     plt.text(1.1,1.2,'private conformal', horizontalalignment='center', verticalalignment='top', transform=axs_sz[0,0].transAxes, fontsize=major_fontsize)
     plt.text(-0.5,-0.2,'private model', horizontalalignment='center', verticalalignment='top', transform=axs_sz[0,0].transAxes, rotation=90, rotation_mode='anchor', fontsize=major_fontsize)
     plt.text(1.1,-0.2,'size', horizontalalignment='center', verticalalignment='top', transform=axs_sz[1,0].transAxes, fontsize=major_fontsize)
-    plt.savefig('outputs/histograms/experiment4_size.pdf')
+    plt.savefig('outputs/histograms/experiment2_size.pdf')
 
 def experiment(alpha, epsilon, opt_gamma, num_calib, M, unit, num_replicates_process, batch_size, cifar10_root, privatemodel, privateconformal):
     df_list = []

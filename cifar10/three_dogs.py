@@ -84,28 +84,34 @@ def experiment(class_to_find, alpha, epsilon, opt_gamma, num_calib, M, unit, num
         # find an easy, medium, and hard dog, where the sets are correct
         easyimg_idx = int(np.argmax(sizes==1))
         mediumimg_idx = int(np.argmax(sizes==3))
-        hardimg_idx = int(np.argmax(sizes==9))
+        hardimg_idx = int(np.argmax( np.logical_and (sizes==9, np.argmax(scores,axis=1) != class_idx) ))
 
         easyimg = test_dataset.data[easyimg_idx]
         mediumimg = test_dataset.data[mediumimg_idx]
         hardimg = test_dataset.data[hardimg_idx]
 
         easyperm = np.argsort(scores[easyimg_idx]).flip(dims=(0,))
-        mediumperm = np.argsort(scores[easyimg_idx]).flip(dims=(0,))
-        hardperm = np.argsort(scores[easyimg_idx]).flip(dims=(0,))
+        mediumperm = np.argsort(scores[mediumimg_idx]).flip(dims=(0,))
+        hardperm = np.argsort(scores[hardimg_idx]).flip(dims=(0,))
 
         easyclasses = [classes_array[easyperm[i]] for i in range(int(sizes[easyimg_idx]))] 
         mediumclasses = [classes_array[mediumperm[i]] for i in range(int(sizes[mediumimg_idx]))] 
         hardclasses = [classes_array[hardperm[i]] for i in range(int(sizes[hardimg_idx]))] 
 
         plt.imshow(test_dataset.data[easyimg_idx])
-        plt.savefig('./outputs/three_dogs/easy.png')
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig('./outputs/three_dogs/easy.png', bbox_inches='tight')
         print(f"easy classes: {easyclasses}")
         plt.imshow(test_dataset.data[mediumimg_idx])
-        plt.savefig('./outputs/three_dogs/medium.png')
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig('./outputs/three_dogs/medium.png', bbox_inches='tight')
         print(f"medium classes: {mediumclasses}")
         plt.imshow(test_dataset.data[hardimg_idx])
-        plt.savefig('./outputs/three_dogs/hard.png')
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig('./outputs/three_dogs/hard.png', bbox_inches='tight')
         print(f"hard classes: {hardclasses}")
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):

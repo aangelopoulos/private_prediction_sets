@@ -60,9 +60,9 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
     cvg_bins = np.arange(mincvg, maxcvg+0.01, 0.001) 
     
     for i in range(len(df_list)):
-        df = df_list[i]
+        df = df_list[-(i+1)]
         weights = np.ones((len(df),))/len(df)
-        epsilon = epsilons[i]
+        epsilon = epsilons[-(i+1)]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
         axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=False, weights=weights)
@@ -70,23 +70,22 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
-        lofb = sizes.min() - float(d)/2
+        lofb = 0.5
         rolb = sizes.max() + float(d)/2
         weights = np.ones_like(sizes)/sizes.shape[0]
-        #axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False)
-        axs[1].hist(sizes, 10, label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False, weights=weights)
+        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False, weights=weights)
     
     axs[0].set_xlabel('coverage')
     axs[0].locator_params(axis='x', nbins=5)
     axs[0].set_ylabel('probability')
-    #axs[0].set_yticks([0,100])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].legend()
+    axs[1].set_xlim([0.5,None])
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
-    plt.savefig( 'outputs/histograms/experiment2.pdf')
+    plt.savefig( 'outputs/histograms/experiment4.pdf')
 
 def experiment(alpha, epsilons, opt_gamma, num_calib, num_replicates_process, batch_size, imagenet_val_dir):
     df_list = []

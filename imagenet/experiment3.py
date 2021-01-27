@@ -54,7 +54,7 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     mincvg = min([df['coverage'].min() for df in df_list])
     maxcvg = min([df['coverage'].max() for df in df_list])
 
-    cvg_bins = None #np.arange(mincvg, maxcvg, 0.001) 
+    cvg_bins = None 
     
     for i in range(len(df_list)):
         df = df_list[i]
@@ -62,7 +62,7 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
         weights = np.ones((len(df),))/len(df)
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)#, density=True)
+        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
@@ -72,9 +72,8 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
         weights = np.ones_like(sizes)/sizes.shape[0]
         mstar_str = ''
         if i == len(df_list)-1:
-            mstar_str = r'$ (M^*)$'
-        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"M={M/unit:.4f}" + r"$\times n\epsilon^2$" + mstar_str, alpha=0.7, weights=weights)
-        #axs[1].hist(sizes, label=f"M={M/unit:.4f}" + r"$\times n\epsilon^2$" + mstar_str, alpha=0.7, weights=weights)
+            mstar_str = r'$^*$'
+        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"m{mstar_str}={np.round(M/unit,2):.2f}" + r"$\times (n\epsilon)^{\frac{2}{3}}$", alpha=0.7, weights=weights)
     
     axs[0].set_xlabel('coverage')
     axs[0].set_ylabel('density')
@@ -162,9 +161,9 @@ if __name__ == "__main__":
     num_trials = 100 
     num_replicates_process =100000
     
-    unit = num_calib * (epsilon ** 2)#int(np.floor(np.sqrt(num_calib)))
+    unit = (num_calib * epsilon) ** (2/3)
 
     Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
-    Ms = np.floor(np.array([np.sqrt(unit),0.1*unit,0.5*unit,1*unit,Mstar])).astype(int)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
+    Ms = np.floor(np.array([0.05*unit,0.1*unit,1*unit,10*unit,Mstar])).astype(int)
 
     experiment(alpha, epsilon, opt_gamma, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
