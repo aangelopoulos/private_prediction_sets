@@ -23,7 +23,7 @@ def get_conformal_scores(scores, labels):
     return conformal_scores 
 
 def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process):
-    best_gamma = opt_gamma[0] 
+    best_gamma = opt_gamma[0] # dummy initialization
     best_shat = scores.max()
     for i in range(opt_gamma.shape[0]):
         gamma = opt_gamma[i] 
@@ -31,12 +31,9 @@ def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma, score_bi
         if shat <= best_shat:
             best_shat = shat
             best_gamma = gamma 
-    return best_shat, best_gamma
+    return best_shat, best_gamma 
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma, num_replicates_process, num_calib, batch_size):
-    M = get_mstar(num_calib, alpha, epsilon, 0.03, num_replicates_process) # max number of bins
-    score_bins = np.linspace(0,1,M)
-
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process, num_calib, batch_size):
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
     conformal_scores = conformal_scores[perm]
@@ -51,48 +48,51 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, opt_gamma, n
 
     return corrects.float().mean().item(), torch.tensor(sizes), shat, gamma
 
-def plot_histograms(df_list,alpha,epsilons,num_calib):
+def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
 
     mincvg = min([df['coverage'].min() for df in df_list])
-    maxcvg = max([df['coverage'].max() for df in df_list])
+    maxcvg = min([df['coverage'].max() for df in df_list])
 
-    cvg_bins = np.arange(mincvg, maxcvg+0.01, 0.001) 
+    cvg_bins = None 
     
     for i in range(len(df_list)):
-        df = df_list[-(i+1)]
-        weights = np.ones((len(df),))/len(df)
-        epsilon = epsilons[-(i+1)]
+        df = df_list[i]
+        M = Ms[i]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
-        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, label=str(epsilon), alpha=0.7, density=False, weights=weights)
+        weights = np.ones((len(df),))/len(df)
+        axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
         d = np.diff(np.unique(sizes)).min()
-        lofb = 0.5
+        lofb = sizes.min() - float(d)/2
         rolb = sizes.max() + float(d)/2
         weights = np.ones_like(sizes)/sizes.shape[0]
-        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=r"$\epsilon$="+str(epsilon), alpha=0.7, density=False, weights=weights)
+        mstar_str = ''
+        if i == len(df_list)-1:
+            mstar_str = r'$^*$'
+        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"m{mstar_str}={np.round(M/unit,2):.2f}" + r"$\times (n\epsilon)^{\frac{2}{3}}$", alpha=0.7, weights=weights)
     
     axs[0].set_xlabel('coverage')
-    axs[0].locator_params(axis='x', nbins=5)
-    axs[0].set_ylabel('probability')
+    axs[0].set_ylabel('density')
+    axs[0].set_xlim([1-alpha-0.002,None])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].legend()
-    axs[1].set_xlim([0.5,None])
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
-    plt.savefig( 'outputs/histograms/experiment4.pdf')
+    plt.savefig( 'outputs/histograms/experiment2.pdf')
 
-def experiment(alpha, epsilons, opt_gamma, num_calib, num_replicates_process, batch_size, imagenet_val_dir):
+def experiment(alpha, epsilon, opt_gamma, num_calib, Ms, unit, num_replicates_process, batch_size, imagenet_val_dir):
     df_list = []
-    for epsilon in epsilons:
-        fname = f'.cache/opt_{alpha}_{epsilon}_{opt_gamma[0]}_{opt_gamma[1]}_{num_calib}_dataframe.pkl'
+    for M in Ms:
+        score_bins = np.linspace(0,1,M)
+        fname = f'.cache/opt_{alpha}_{epsilon}_{opt_gamma[0]}_{opt_gamma[1]}_{num_calib}_{M}bins_dataframe.pkl'
 
-        df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$", "$\\gamma$"])
+        df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$", "$\\gamma_1$", "$\\gamma_2$"])
         try:
             df = pd.read_pickle(fname)
         except FileNotFoundError:
@@ -109,7 +109,7 @@ def experiment(alpha, epsilons, opt_gamma, num_calib, num_replicates_process, ba
                 conformal_scores = get_conformal_scores(scores, labels)
                 local_df_list = []
                 for i in tqdm(range(num_trials)):
-                    cvg, szs, shat, gamma = trial_precomputed(conformal_scores, scores, alpha, epsilon, opt_gamma, num_replicates_process, num_calib, batch_size)
+                    cvg, szs, shat, gamma = trial_precomputed(conformal_scores, scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process, num_calib, batch_size)
                     dict_local = {"$\\hat{s}$": shat,
                                     "coverage": cvg,
                                     "sizes": [szs],
@@ -124,7 +124,7 @@ def experiment(alpha, epsilons, opt_gamma, num_calib, num_replicates_process, ba
 
         df_list = df_list + [df]
 
-    plot_histograms(df_list,alpha,epsilons,num_calib)
+    plot_histograms(df_list,alpha,Ms,unit,num_calib)
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
     calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
@@ -155,10 +155,15 @@ if __name__ == "__main__":
     imagenet_val_dir = '/scratch/group/ilsvrc/val'
 
     alpha = 0.1
-    epsilons = [0.5,1,5,10]
+    epsilon = 1
     opt_gamma = np.logspace(-4,-0.5,50)
     num_calib = 30000 
-    num_trials = 100
+    num_trials = 100 
     num_replicates_process =100000
+    
+    unit = (num_calib * epsilon) ** (2/3)
 
-    experiment(alpha, epsilons, opt_gamma, num_calib, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
+    Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
+    Ms = np.floor(np.array([0.05*unit,0.1*unit,1*unit,10*unit,Mstar])).astype(int)
+
+    experiment(alpha, epsilon, opt_gamma, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
