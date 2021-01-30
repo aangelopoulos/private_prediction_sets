@@ -40,36 +40,47 @@ def generate_scores(n):
     return np.random.uniform(size=(n,))
 
 def private_hist(scores,epsilon,bins):
-    scale = 1/epsilon
+    scale = 2/epsilon
     hist, _ = np.histogram(scores, bins=bins)
     hist = hist + np.random.laplace(loc=0.0,scale=scale,size=hist.shape)
-    cumsum = np.cumsum(hist)
+    cumsum = np.cumsum(hist[::-1])[::-1]
+    #cumsum = cumsum.sum() - cumsum
     return hist, cumsum
 
-def hist_2_cdf(cumsum, bins):
+def hist_2_cdf(cumsum, bins, n):
     def _cdf(t):
-        if t > bins[-1]:
+        if t > bins[-2]:
             return 1.0
         elif t < bins[1]:
             return 0.0
         else:
-            return cumsum[np.searchsorted(bins, t)-1]/cumsum[-1]
+            return 1-cumsum[np.searchsorted(bins, t)]/n
     return _cdf
 
 def get_adjusted_alpha_cdf(n, alpha, gamma):
     return 1-(n+1)*(1-alpha)/(n*(1-gamma*alpha))
 
-#def get_adjusted_alpha_cdf(n, alpha, g1, g2):
-#    def _condition(mprime):
-#        return beta.cdf(1-alpha*g1,mprime,n-mprime+1) - g2*alpha
-#    return 1-brentq(_condition, 1, n)/n
+def get_optimal_gamma(n,alpha,m,epsilon,num_replicates):
+    gammas = np.linspace(0,0.2,1000)
+    best_gamma = 1
+    best_value = 1
+    scale = 2/epsilon
+    sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
+    for gamma in gammas:
+        def _laplace_condition(q):
+            return sup_lproc_cdf(q) - (1-gamma*alpha)
+        value = (n+1)*(1-alpha)/(n*(1-gamma*alpha)) + brentq(_laplace_condition,0,n)/n
+        if value < best_value:
+            best_gamma = gamma
+            best_value = value
+    return best_gamma, best_value
 
 def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
     hist, cumsum = private_hist(scores, epsilon, bins)
-    ecdf = hist_2_cdf(cumsum, bins)
     n = scores.shape[0]
     m = bins.shape[0] - 1
-    scale = 2*n/(epsilon*(n-1))
+    ecdf = hist_2_cdf(cumsum, bins,n)
+    scale = 2/epsilon
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
     def _laplace_condition(q):
         return sup_lproc_cdf(q) - (1-gamma*alpha)
@@ -108,7 +119,7 @@ if __name__ == "__main__":
     bins = np.linspace(0,1,M)
     #plot_beta_inv(n, m, scale)
     scores = generate_scores(n)
-    gamma = 0.01
+    gamma, _ = get_optimal_gamma(n,alpha,M,num_replicates)
     qhat = get_private_quantile(scores, alpha,  epsilon, gamma, bins, num_replicates)
     print(qhat)
     mstar = get_mstar(n, alpha, epsilon, gamma, num_replicates)

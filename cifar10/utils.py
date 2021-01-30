@@ -125,9 +125,9 @@ def get_model(private=True, cache= dirname + '/.cache/'):
     model = convert_batchnorm_modules(torchvision.models.resnet18(num_classes=10))
 
     if private:
-        data = torch.load('./models/private_resnet18.pth.tar')
+        data = torch.load('./models/privatemodel_best.pth.tar')
     else:
-        data = torch.load('./models/nonprivate_resnet18.pth.tar')
+        data = torch.load('./models/nonprivatemodel_best.pth.tar')
 
     model.load_state_dict(data['state_dict'])
     model.cuda()
