@@ -181,7 +181,7 @@ if __name__ == "__main__":
     privatemodels = [False, True]
 
     alpha = 0.1
-    epsilon = 3.29 # epsilon of the trained model 
+    epsilon = 8 # epsilon of the trained model 
     num_calib = 5000 
     num_trials = 100 
     num_replicates_process =100000

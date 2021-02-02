@@ -383,7 +383,11 @@ def main():
         )
         privacy_engine.attach(optimizer)
 
-    for epoch in range(args.start_epoch, args.epochs + 1):
+        epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(
+            args.delta
+        )
+    epoch = 0
+    while epoch < 470:
         train(args, model, train_loader, optimizer, epoch, device)
         top1_acc = test(args, model, test_loader, device)
 
@@ -403,6 +407,12 @@ def main():
             filename=args.checkpoint_file + ".tar",
             private=(not args.disable_dp),
         )
+        if not args.disable_dp:
+            epsilon, best_alpha = optimizer.privacy_engine.get_privacy_spent(
+                args.delta
+            )
+
+        epoch = epoch + 1
 
 
 if __name__ == "__main__":

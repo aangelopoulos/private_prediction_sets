@@ -36,33 +36,19 @@ def get_shat_from_scores_private_opt(scores, alpha, epsilon, opt_gamma, score_bi
             best_gamma = gamma 
     return best_shat, best_gamma
 
-def experiment(class_to_find, alpha, epsilon, opt_gamma, num_calib, M, unit, num_replicates_process, batch_size, cifar10_root, privatemodel, privateconformal):
+def experiment(logits_dataset_dict, image_dataset_dict, alpha, epsilon, opt_gamma, num_calib, M, unit, num_replicates_process, batch_size, privatemodel, privateconformal):
     score_bins = np.linspace(0,1,M)
+    dataset_precomputed = logits_dataset_dict['val']
+    test_targets = [x[1] for x in image_dataset_dict['val']]
 
-    dataset_precomputed = get_logits_dataset(privatemodel, 'CIFAR10', cifar10_root)
-    print('Dataset loaded')
-    
-    classes_array = get_cifar10_classes()
-    class_idx = np.where(np.array(classes_array) == class_to_find)[0][0]
+    classes_array = ['bacterial pneumonia', 'normal', 'viral pneumonia'] 
+    class_idx = np.where(np.array(classes_array) == 'viral pneumonia')[0][0]
     T = platt_logits(dataset_precomputed)
     logits, labels = dataset_precomputed.tensors
     scores = (logits/T.cpu()).softmax(dim=1)
 
     with torch.no_grad():
-        model = get_model(privatemodel)
-
-        augmentations = [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-        ]
-        normalize = [
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ]
-        test_transform = transforms.Compose(normalize)
-        test_dataset = CIFAR10(
-            root=cifar10_root, train=False, download=True, transform=test_transform
-        )
+        model = get_model(privatemodel, True)
 
         # do the conformal calibration
         conformal_scores = get_conformal_scores(scores, labels)
@@ -72,23 +58,22 @@ def experiment(class_to_find, alpha, epsilon, opt_gamma, num_calib, M, unit, num
         shat, gamma = get_shat_from_scores_private_opt(calib_conformal_scores, alpha, epsilon, opt_gamma, score_bins, num_replicates_process)
 
         # give only the dogs where the sets cover the correct answer
-        class_selector = np.array(test_dataset.targets) == class_idx
+        class_selector = np.array(test_targets) == class_idx
         class_selector[0:num_calib] = False # adjust for the calib set.
         class_selector[1-conformal_scores > shat] = False
-        test_dataset.data = test_dataset.data[class_selector,:,:,:]
-        test_dataset.targets = np.array(test_dataset.targets)[class_selector].tolist()
+        selected_images = [image_dataset_dict['val'][i][0] for i in range(len(test_targets)) if class_selector[i]]
         scores = scores[class_selector,:]
         sets = (1-scores < shat)
         sizes = sets.sum(dim=1)
 
         # find an easy, medium, and hard dog, where the sets are correct
-        easyimg_idx = int(np.argmax(sizes==1))
-        mediumimg_idx = int(np.argmax(sizes==3))
-        hardimg_idx = int(np.argmax( np.logical_and (sizes==9, np.argmax(scores,axis=1) != class_idx) ))
+        easyimg_idx = int(np.argmax(np.logical_and(sizes==1, scores.argmax(dim=1)==class_idx)))
+        mediumimg_idx = int(np.argmax(sizes==2))
+        hardimg_idx = int(np.argmax( sizes == 3 ))
 
-        easyimg = test_dataset.data[easyimg_idx]
-        mediumimg = test_dataset.data[mediumimg_idx]
-        hardimg = test_dataset.data[hardimg_idx]
+        easyimg = selected_images[easyimg_idx].permute(1,2,0)
+        mediumimg = selected_images[mediumimg_idx].permute(1,2,0)
+        hardimg = selected_images[hardimg_idx].permute(1,2,0)
 
         easyperm = np.argsort(scores[easyimg_idx]).flip(dims=(0,))
         mediumperm = np.argsort(scores[mediumimg_idx]).flip(dims=(0,))
@@ -98,20 +83,20 @@ def experiment(class_to_find, alpha, epsilon, opt_gamma, num_calib, M, unit, num
         mediumclasses = [classes_array[mediumperm[i]] for i in range(int(sizes[mediumimg_idx]))] 
         hardclasses = [classes_array[hardperm[i]] for i in range(int(sizes[hardimg_idx]))] 
 
-        plt.imshow(test_dataset.data[easyimg_idx])
+        plt.imshow(easyimg)
         plt.axis('off')
         plt.tight_layout()
-        plt.savefig('./outputs/three_dogs/easy.png', bbox_inches='tight')
+        plt.savefig('./outputs/three_covid/easy_covid.png', bbox_inches='tight')
         print(f"easy classes: {easyclasses}")
-        plt.imshow(test_dataset.data[mediumimg_idx])
+        plt.imshow(mediumimg)
         plt.axis('off')
         plt.tight_layout()
-        plt.savefig('./outputs/three_dogs/medium.png', bbox_inches='tight')
+        plt.savefig('./outputs/three_covid/medium_covid.png', bbox_inches='tight')
         print(f"medium classes: {mediumclasses}")
-        plt.imshow(test_dataset.data[hardimg_idx])
+        plt.imshow(hardimg)
         plt.axis('off')
         plt.tight_layout()
-        plt.savefig('./outputs/three_dogs/hard.png', bbox_inches='tight')
+        plt.savefig('./outputs/three_covid/hard_covid.png', bbox_inches='tight')
         print(f"hard classes: {hardclasses}")
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
@@ -140,20 +125,24 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    cifar10_root = './data/cifar10'
-    privateconformal = True 
-    privatemodel = True
-
     alpha = 0.1
     epsilon = 8 # epsilon of the trained model 
     opt_gamma = np.logspace(-4,-0.5,50)
-    num_calib = 5000 
+    num_calib = 1000 
+    num_val = 500
     num_trials = 100 
     num_replicates_process =100000
+    privatemodel = False
+    privateconformal = True
     
     unit = int(np.floor(np.sqrt(num_calib)))
     M = get_mstar(num_calib, alpha, epsilon, 0.05, num_replicates_process) #np.floor(5*unit).astype(int)
     class_to_find = 'dog'
     print(M)
 
-    experiment(class_to_find, alpha, epsilon, opt_gamma, num_calib, M, unit, num_replicates_process, batch_size=128, cifar10_root=cifar10_root, privatemodel=privatemodel, privateconformal=privateconformal)
+    # Top level data directory. Here we assume the format of the directory conforms 
+    #   to the ImageFolder structure
+    data_dir = "./data/imagefolder"
+    datasetname = 'xray'
+    logits_dataset_dict, image_dataset_dict = get_logits_dataset(privatemodel, datasetname, data_dir, num_calib, num_val, seed=0, cache='./.cache/')
+    experiment(logits_dataset_dict, image_dataset_dict, alpha, epsilon, opt_gamma, num_calib, M, unit, num_replicates_process, batch_size=128, privatemodel=privatemodel, privateconformal=privateconformal)
