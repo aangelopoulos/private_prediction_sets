@@ -183,7 +183,7 @@ if __name__ == "__main__":
     alpha = 0.1
     epsilon = 8 # epsilon of the trained model 
     num_calib = 5000 
-    num_trials = 100 
+    num_trials = 1000 
     num_replicates_process =100000
     
     unit = int(np.floor(np.sqrt(num_calib)))

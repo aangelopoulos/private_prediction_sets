@@ -75,23 +75,27 @@ def get_optimal_gamma(n,alpha,m,epsilon,num_replicates):
             best_value = value
     return best_gamma, best_value
 
-def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
-    hist, cumsum = private_hist(scores, epsilon, bins)
-    n = scores.shape[0]
+def get_qhat(n,alpha,epsilon,gamma,bins,num_replicates):
     m = bins.shape[0] - 1
-    ecdf = hist_2_cdf(cumsum, bins,n)
     scale = 2/epsilon
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
     def _laplace_condition(q):
         return sup_lproc_cdf(q) - (1-gamma*alpha)
     laplace_quantile = brentq(_laplace_condition,0,n)
     adjusted_quantile = 1-get_adjusted_alpha_cdf(n, alpha, gamma) + laplace_quantile/n
-    if adjusted_quantile > 1-1e-5:
+    return adjusted_quantile
+
+def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
+    n = scores.shape[0]
+    hist, cumsum = private_hist(scores, epsilon, bins)
+    ecdf = hist_2_cdf(cumsum, bins,n)
+    qhat = get_qhat(n,alpha,epsilon,gamma,bins,num_replicates)
+    if qhat > 1-1e-5:
         return bins[-1]
     def _condition(q):
-        return ecdf(q) - adjusted_quantile
-    qhat = brentq(_condition, 1e-5, 1-1e-5)
-    bin_idx = min(np.argmax(bins > qhat)+1,bins.shape[0]-1) # handle rounding up
+        return ecdf(q) - qhat 
+    shat = brentq(_condition, 1e-5, 1-1e-5)
+    bin_idx = min(np.argmax(bins > shat)+1,bins.shape[0]-1) # handle rounding up
     return bins[bin_idx] 
 
 def get_mstar(n, alpha, epsilon, gamma, num_replicates):
