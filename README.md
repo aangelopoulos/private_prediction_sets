@@ -1,6 +1,4 @@
-<p align="center"><img width=100% src="./media/private_prediction_sets.svg"></p>
-<p align="center"><img width=100% src="./media/pps_onload.svg"></p>
-
+<p align="center"><img width=100% src="./media/secret-squirrels.svg"></p>
 
 <p align="center">
     <a style="text-decoration:none !important;" href="arxivlink" alt="arXiv"> <img src="https://img.shields.io/badge/paper-arXiv-red" /> </a>
