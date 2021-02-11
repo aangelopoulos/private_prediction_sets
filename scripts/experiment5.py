@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from core.private_conformal_utils import *
-import pdb
 
 def get_qhat_n(n, alpha, epsilon, num_replicates):
     gamma = 1/((n * epsilon)**(2/3))

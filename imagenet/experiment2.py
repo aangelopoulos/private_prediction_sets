@@ -145,7 +145,7 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    imagenet_val_dir = '/scratch/group/ilsvrc/val'
+    imagenet_val_dir = '/scratch/group/ilsvrc/val' # TODO: Put your imagenet directory here
 
     alpha = 0.1
     epsilon = 1

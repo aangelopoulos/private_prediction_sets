@@ -11,7 +11,6 @@ import pickle
 from tqdm import tqdm
 import random
 import pandas as pd
-import pdb
 dirname = str(pathlib.Path(__file__).parent.absolute())
 
 def sort_sum(scores):

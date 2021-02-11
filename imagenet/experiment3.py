@@ -16,7 +16,6 @@ from utils import *
 import seaborn as sns
 from core.concentration import *
 from core.private_conformal_utils import *
-import pdb
 
 def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
@@ -145,7 +144,7 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    imagenet_val_dir = '/scratch/group/ilsvrc/val'
+    imagenet_val_dir = '/scratch/group/ilsvrc/val' # TODO: put your imagenet directory here
 
     alpha = 0.1
     epsilons = [0.5,1,5,10]

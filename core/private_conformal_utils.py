@@ -7,7 +7,6 @@ from tqdm import tqdm
 from core.concentration import dkw, get_cdf_of_process_supremum, pointwise_cdf_bound
 from scipy.optimize import brentq
 from scipy.stats import binom, beta
-import pdb
 
 def beta_dkw(t,n,m,scale,num_replicates):
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)

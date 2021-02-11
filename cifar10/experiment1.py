@@ -16,7 +16,6 @@ from utils import *
 import seaborn as sns
 from core.concentration import *
 from core.private_conformal_utils import *
-import pdb
 
 def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 

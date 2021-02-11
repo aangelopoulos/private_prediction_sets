@@ -23,8 +23,6 @@ from opacus.utils import stats
 from opacus.utils.module_modification import convert_batchnorm_modules
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
-import pdb
-
 
 def save_checkpoint(state, is_best, filename="checkpoint.tar", private=True):
     root = f'./.cache/'

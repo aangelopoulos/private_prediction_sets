@@ -4,7 +4,6 @@ import numpy as np
 import pickle as pkl
 from tqdm import tqdm
 from scipy.stats import binom
-import pdb
 
 def dkw(n,t):
     return 2*np.exp(-2*n*t*t)
