@@ -133,10 +133,7 @@ def get_model(private=False, feature_extract=True, cache= dirname + '/.cache/'):
     num_ftrs = model_ft.fc.in_features
     model_ft.fc = nn.Linear(num_ftrs, 3)
 
-    if private:
-        data = torch.load('./.cache/privatemodel_best.pth.tar')
-    else:
-        data = torch.load('./.cache/nonprivatemodel_best.pth.tar')
+    data = torch.load('./.cache/nonprivatemodel_best.pth.tar')
 
     model_ft.load_state_dict(data)
     model_ft.cuda()

@@ -136,8 +136,8 @@ if __name__ == "__main__":
     privateconformal = True
     
     unit = int(np.floor(np.sqrt(num_calib)))
-    M = get_mstar(num_calib, alpha, epsilon, 0.05, num_replicates_process) #np.floor(5*unit).astype(int)
-    class_to_find = 'dog'
+    M = get_mstar(num_calib, alpha, epsilon, 0.05, num_replicates_process) 
+    class_to_find = 'viral'
     print(M)
 
     # Top level data directory. Here we assume the format of the directory conforms 
