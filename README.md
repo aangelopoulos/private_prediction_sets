@@ -10,7 +10,13 @@
 ## Paper 
 [Private Prediction Sets](https://arxiv.org/abs/2102.06202)
 ```
-citation
+@article{angelopoulos-private-sets,
+  title={Private Prediction Sets},
+  author={Angelopoulos, Anastasios N and Bates, Stephen and Zrnic, Tijana and Jordan, Michael I},
+  journal={arXiv preprint arXiv:2102.06202},
+  year={2021}
+}
+
 ```
 
 ## Basic Overview
