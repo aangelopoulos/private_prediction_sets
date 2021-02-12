@@ -1,6 +1,7 @@
 import os, sys, inspect
 sys.path.insert(1, os.path.join(sys.path[0], '../'))
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 from core.private_conformal_utils import *
@@ -33,9 +34,14 @@ def get_qhats_epsilons(epsilons, alpha, ns_small, num_replicates):
                 qhats_ns[i,j] = None
     return qhats_ns
 
+def fix_randomness(seed=0):
+    np.random.seed(seed=seed)
+    random.seed(seed)
+
 if __name__ == "__main__":
     sns.set(palette='pastel')
     sns.set_theme(style='white')
+    fix_randomness(seed=0)
     # Experimental parameters
     ns = np.logspace(2,4.5,50).astype(int)
     ns_small = [100,1000,10000]

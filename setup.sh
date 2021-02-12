@@ -11,6 +11,7 @@ mkdir ./covid-chest-xray/outputs
 mkdir ./covid-chest-xray/outputs/histograms
 mkdir ./covid-chest-xray/outputs/three-covid
 mkdir ./scripts/outputs
+mkdir ./scripts/.cache
 mkdir ./core/.cache
 conda env create -f environment.yml
 conda activate pps 

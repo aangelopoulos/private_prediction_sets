@@ -1,14 +1,14 @@
 <p align="center"><img width=100% src="./media/secret-squirrels.svg"></p>
 
 <p align="center">
-    <a style="text-decoration:none !important;" href="arxivlink" alt="arXiv"> <img src="https://img.shields.io/badge/paper-arXiv-red" /> </a>
+    <a style="text-decoration:none !important;" href="http://arxiv.org/abs/2102.06202" alt="arXiv"> <img src="https://img.shields.io/badge/paper-arXiv-red" /> </a>
     <a style="text-decoration:none !important;" href="https://docs.conda.io/en/latest/miniconda.html" alt="package management"> <img src="https://img.shields.io/badge/conda-env-green" /> </a>
     <a style="text-decoration:none !important;" href="https://opensource.org/licenses/MIT" alt="License"> <img src="https://img.shields.io/badge/license-MIT-blue.svg" /> </a>
 
 </p>
 
 ## Paper 
-[Private Prediction Sets](https://arxiv.org/abs)
+[Private Prediction Sets](https://arxiv.org/abs/2102.06202)
 ```
 citation
 ```
