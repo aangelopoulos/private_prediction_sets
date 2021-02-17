@@ -42,7 +42,7 @@ bash setup.sh
 
 <p>
   Each experiment requires different datasets. 
-  The <code>CIFAR-10</code> dataset and <code>Coronahack</code> dataset will automatically download when the experiments run or during setup. 
+  The <code>CIFAR-10</code> dataset and <a href="https://www.kaggle.com/praveengovi/coronahack-chest-xraydataset"><code>Coronahack</code></a> dataset will automatically download when the experiments run or during setup. 
   For the <code>./imagenet</code> experiments, you will need to point the scripts towards the val directory of your local copy of the Imagenet dataset.
 </p>
 
