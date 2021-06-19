@@ -7,6 +7,8 @@ from tqdm import tqdm
 from core.concentration import dkw, get_cdf_of_process_supremum, pointwise_cdf_bound
 from scipy.optimize import brentq
 from scipy.stats import binom, beta
+from scipy.special import softmax
+import pdb
 
 def beta_dkw(t,n,m,scale,num_replicates):
     sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
@@ -86,16 +88,27 @@ def get_qhat(n,alpha,epsilon,gamma,bins,num_replicates):
 
 def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
     n = scores.shape[0]
-    hist, cumsum = private_hist(scores, epsilon, bins)
-    ecdf = hist_2_cdf(cumsum, bins,n)
-    qhat = get_qhat(n,alpha,epsilon,gamma,bins,num_replicates)
-    if qhat > 1-1e-5:
-        return bins[-1]
-    def _condition(q):
-        return ecdf(q) - qhat 
-    shat = brentq(_condition, 1e-5, 1-1e-5)
-    bin_idx = min(np.argmax(bins > shat)+1,bins.shape[0]-1) # handle rounding up
-    return bins[bin_idx] 
+    scores = scores.squeeze()
+    score_to_bin = np.digitize(scores,bins)
+    binned_scores = bins[np.minimum(score_to_bin,bins.shape[0]-1)]
+    sort_idx = binned_scores.argsort().argsort()
+    ranks = (np.array(range(n))+1.0)[sort_idx]
+    alpha_adjusted = (n+1)*(1-alpha)/(n*(1-gamma*alpha)) + 1/epsilon/n * np.log(bins.shape[0]/gamma/alpha) + 1/n
+    sampling_probabilities = softmax(-(epsilon/2)*np.abs(alpha_adjusted * n - ranks))
+    return np.random.choice(binned_scores,p=sampling_probabilities)
+
+#def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
+#    n = scores.shape[0]
+#    hist, cumsum = private_hist(scores, epsilon, bins)
+#    ecdf = hist_2_cdf(cumsum, bins,n)
+#    qhat = get_qhat(n,alpha,epsilon,gamma,bins,num_replicates)
+#    if qhat > 1-1e-5:
+#        return bins[-1]
+#    def _condition(q):
+#        return ecdf(q) - qhat 
+#    shat = brentq(_condition, 1e-5, 1-1e-5)
+#    bin_idx = min(np.argmax(bins > shat)+1,bins.shape[0]-1) # handle rounding up
+#    return bins[bin_idx] 
 
 def get_mstar(n, alpha, epsilon, gamma, num_replicates):
     candidates = np.arange(10,int(0.1*n),50)
