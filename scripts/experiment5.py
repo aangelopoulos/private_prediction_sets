@@ -77,36 +77,36 @@ if __name__ == "__main__":
     epsilons = np.logspace(-1,2,50)
     epsilons_small = [0.1,1,10]
     num_replicates = 100000
-    fname_ns = '.cache/qhats_ns.npy'
-    fname_epsilons = '.cache/qhats_epsilons.npy'
+    #fname_ns = '.cache/qhats_ns.npy'
+    #fname_epsilons = '.cache/qhats_epsilons.npy'
     fname_ns_newmethod = '.cache/qhats_ns_newmethod.npy'
     fname_epsilons_newmethod = '.cache/qhats_epsilons_newmethod.npy'
     vanilla_conformal = np.array([np.ceil( (n+1) * (1-alpha) ) / n for n in ns])
     try:
         # load the curves
-        qhats_ns = np.load(fname_ns)
-        qhats_epsilons = np.load(fname_epsilons)
+        #qhats_ns = np.load(fname_ns)
+        #qhats_epsilons = np.load(fname_epsilons)
         qhats_ns_newmethod = np.load(fname_ns_newmethod)
         qhats_epsilons_newmethod = np.load(fname_epsilons_newmethod)
     except:
         # compute the curves
-        qhats_ns = get_qhats_ns(ns, alpha, epsilons_small, num_replicates)
-        qhats_epsilons = get_qhats_epsilons(epsilons, alpha, ns_small, num_replicates)
+        #qhats_ns = get_qhats_ns(ns, alpha, epsilons_small, num_replicates)
+        #qhats_epsilons = get_qhats_epsilons(epsilons, alpha, ns_small, num_replicates)
         qhats_ns_newmethod = get_qhats_ns_newmethod(ns, alpha, epsilons_small, num_replicates)
         qhats_epsilons_newmethod = get_qhats_epsilons_newmethod(epsilons, alpha, ns_small, num_replicates)
-        np.save(fname_ns, qhats_ns)
-        np.save(fname_epsilons, qhats_epsilons)
+        #np.save(fname_ns, qhats_ns)
+        #np.save(fname_epsilons, qhats_epsilons)
         np.save(fname_ns_newmethod, qhats_ns_newmethod)
         np.save(fname_epsilons_newmethod, qhats_epsilons_newmethod)
     # plot
     fig, axs = plt.subplots(nrows=1,ncols=2,figsize=(12,3))
-    for i in range(qhats_ns.shape[0]):
-        axs[0].plot(ns,qhats_ns[i,:],label=r"$\epsilon$" + f"={epsilons_small[i]}", linewidth=3, alpha=0.7)
-        axs[0].plot(ns,qhats_ns_newmethod[i,:],label=r"NEW $\epsilon$" + f"={epsilons_small[i]}", linewidth=3, alpha=0.7)
+    for i in range(qhats_ns_newmethod.shape[0]):
+        #axs[0].plot(ns,qhats_ns[i,:],label=r"$\epsilon$" + f"={epsilons_small[i]}", linewidth=3, alpha=0.7)
+        axs[0].plot(ns,qhats_ns_newmethod[i,:],label=r"$\epsilon$" + f"={epsilons_small[i]}", linewidth=3, alpha=0.7)
     axs[0].plot(ns, vanilla_conformal, label="nonprivate", c='#ffb347', linestyle='--', linewidth=3, alpha=0.7)
-    for i in range(qhats_epsilons.shape[0]):
-        axs[1].plot(epsilons[:-5],qhats_epsilons[i,:-5],label=r"$n$" + f"={ns_small[i]}", linewidth=3, alpha=0.7)
-        axs[1].plot(epsilons[:-5],qhats_epsilons_newmethod[i,:-5],label=r"NEW $n$" + f"={ns_small[i]}", linewidth=3, alpha=0.7)
+    for i in range(qhats_epsilons_newmethod.shape[0]):
+        #axs[1].plot(epsilons[:-5],qhats_epsilons[i,:-5],label=r"$n$" + f"={ns_small[i]}", linewidth=3, alpha=0.7)
+        axs[1].plot(epsilons[:-5],qhats_epsilons_newmethod[i,:-5],label=r"$n$" + f"={ns_small[i]}", linewidth=3, alpha=0.7)
     sns.despine(top=True, right=True, ax=axs[0])
     sns.despine(top=True, right=True, ax=axs[1])
     axs[0].set_ylim(0.88,1)
