@@ -65,12 +65,8 @@ def get_optimal_gamma(n,alpha,m,epsilon,num_replicates):
     gammas = np.linspace(0,0.2,1000)
     best_gamma = 1
     best_value = 1
-    scale = 2/epsilon
-    sup_lproc_cdf = get_cdf_of_process_supremum(num_replicates,m,scale)
     for gamma in gammas:
-        def _laplace_condition(q):
-            return sup_lproc_cdf(q) - (1-gamma*alpha)
-        value = (n+1)*(1-alpha)/(n*(1-gamma*alpha)) + brentq(_laplace_condition,0,n)/n
+        value = (n+1)*(1-alpha)/(n*(1-gamma*alpha)) + 2/epsilon/n*np.log(m/gamma/alpha) + 1/n  
         if value < best_value:
             best_gamma = gamma
             best_value = value
@@ -111,7 +107,7 @@ def get_private_quantile(scores, alpha, epsilon, gamma, bins, num_replicates):
 #    return bins[bin_idx] 
 
 def get_mstar(n, alpha, epsilon, gamma, num_replicates):
-    candidates = np.arange(10,int(0.1*n),50)
+    candidates = np.logspace(1,min(np.log(int(10*n*epsilon)),4),50).astype(int)
     scores = np.random.rand(n,1)
     best_m = 10
     best_q = 1

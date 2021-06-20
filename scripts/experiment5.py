@@ -32,8 +32,7 @@ def get_qhats_ns_newmethod(ns, alpha, epsilons_small, num_replicates):
             try:
                 n = ns[j]
                 epsilon = epsilons_small[i]
-                m = (n * epsilon)**(2/3)
-                pdb.set_trace()
+                m = max(n * epsilon,int(1/alpha))
                 qhats_ns[i,j] = 1 - alpha + 2/(n*epsilon) + 2*np.log(m*n*epsilon/2)/(n*epsilon) 
             except:
                 qhats_ns[i,j] = None
@@ -56,7 +55,7 @@ def get_qhats_epsilons_newmethod(epsilons, alpha, ns_small, num_replicates):
             try:
                 n = ns_small[i]
                 epsilon = epsilons[j]
-                m = (n * epsilon)**(2/3)
+                m = max(n * epsilon,int(1/alpha))
                 qhats_epsilons[i,j] = 1 - alpha + 2/(n*epsilon) + 2*np.log(m*n*epsilon/2)/(n*epsilon) 
             except:
                 qhats_epsilons[i,j] = None

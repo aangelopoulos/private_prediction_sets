@@ -66,7 +66,7 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
         mstar_str = ''
         if i == len(df_list)-1:
             mstar_str = r'$^*$'
-        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"m{mstar_str}={np.round(M/unit,2):.2f}" + r"$\times (n\epsilon)^{\frac{2}{3}}$", alpha=0.7, weights=weights)
+        axs[1].hist(sizes, np.arange(lofb,rolb+d, d), label=f"m{mstar_str}={np.round(M/unit,2):.2f}" + r"$\times n\epsilon$", alpha=0.7, weights=weights)
     
     axs[0].set_xlabel('coverage')
     axs[0].set_ylabel('density')
@@ -74,6 +74,7 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].legend()
+    axs[1].set_xlim([0.5,None])
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     num_trials = 100 
     num_replicates_process =100000
     
-    unit = (num_calib * epsilon) ** (2/3)
+    unit = (num_calib * epsilon)
 
     Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
     Ms = np.floor(np.array([0.05*unit,0.1*unit,1*unit,10*unit,Mstar])).astype(int)

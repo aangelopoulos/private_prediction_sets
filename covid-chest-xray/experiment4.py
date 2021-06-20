@@ -152,7 +152,7 @@ if __name__ == "__main__":
     num_trials = 1000 
     num_replicates_process =100000
     
-    unit = (num_calib * epsilon) ** (2/3)
+    unit = (num_calib * epsilon)
 
     Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
 

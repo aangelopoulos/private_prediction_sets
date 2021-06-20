@@ -26,8 +26,11 @@ def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins, num_
     return shat
 
 def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, num_replicates_process, num_calib, batch_size):
-    gamma, _ = get_optimal_gamma(num_calib,alpha,int((num_calib * epsilon) ** (2/3)),epsilon,num_replicates_process)
+    gamma, _ = get_optimal_gamma(num_calib,alpha,int((num_calib * epsilon)),epsilon,num_replicates_process)
+    gamma = max(gamma, 1e-4)
     M = get_mstar(num_calib, alpha, epsilon, gamma, num_replicates_process) # max number of bins
+    M = min(M,1e4)
+    M = max(M,10)
     score_bins = np.linspace(0,1,M)
 
     total=conformal_scores.shape[0]
@@ -72,9 +75,10 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
     axs[0].locator_params(axis='x', nbins=5)
     axs[0].set_ylabel('probability')
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
+    axs[0].set_xlim([1-alpha-0.02,1-alpha+0.02])
     axs[1].set_xlabel('size')
     axs[1].legend()
-    axs[1].set_xlim([0.5,None])
+    axs[1].set_xlim([0.5,10.5])
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
