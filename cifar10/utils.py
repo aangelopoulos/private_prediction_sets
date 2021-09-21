@@ -14,6 +14,7 @@ import pandas as pd
 import pdb
 from opacus.utils.module_modification import convert_batchnorm_modules
 from torchvision.datasets import CIFAR10
+from train_model import convnet
 
 dirname = str(pathlib.Path(__file__).parent.absolute())
 
@@ -122,7 +123,7 @@ def split2(dataset, n1, n2):
     return data1, data2
 
 def get_model(private=True, cache= dirname + '/.cache/'):
-    model = convert_batchnorm_modules(torchvision.models.resnet18(num_classes=10))
+    model = convnet(num_classes=10)
 
     if private:
         data = torch.load('./models/privatemodel_best.pth.tar')

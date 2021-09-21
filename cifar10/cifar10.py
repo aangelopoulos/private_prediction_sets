@@ -10,7 +10,6 @@ import logging
 import os
 import shutil
 import sys
-import pdb
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -113,10 +112,9 @@ def convnet(num_classes):
     )
 
 
-def save_checkpoint(state, is_best, filename="checkpoint.tar", nonprivate=True):
-    pdb.set_trace()
+def save_checkpoint(state, is_best, filename="checkpoint.tar", private=True):
     root = f'./.cache/'
-    root = root + 'nonprivate' if nonprivate else root + 'private'
+    root = root + 'private' if private else root + 'nonprivate'
     torch.save(state, root+filename)
     if is_best:
         shutil.copyfile(root+filename, root+"model_best.pth.tar")
@@ -405,7 +403,7 @@ def main():
             },
             is_best,
             filename=args.checkpoint_file + ".tar",
-            nonprivate = args.disable_dp,
+            private = ~args.disable_dp,
         )
 
     if rank == 0:

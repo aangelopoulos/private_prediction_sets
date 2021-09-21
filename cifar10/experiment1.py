@@ -14,7 +14,6 @@ import pickle as pkl
 from tqdm import tqdm
 from utils import *
 import seaborn as sns
-from core.concentration import *
 from core.private_conformal_utils import *
 
 def get_conformal_scores(scores, labels):
@@ -24,11 +23,11 @@ def get_conformal_scores(scores, labels):
 def get_shat_from_scores(scores, alpha):
     return np.quantile(scores,1-alpha)
 
-def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins, num_replicates_process):
-    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins):
+    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins)
     return shat
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size, privateconformal):
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_calib, privateconformal):
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
     conformal_scores = conformal_scores[perm]
@@ -37,7 +36,7 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
     
     if privateconformal:
-        shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+        shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins)
     else:
         gamma = 0
         shat = get_shat_from_scores(calib_conformal_scores, alpha)
@@ -111,10 +110,10 @@ def plot_histograms(df_list,alpha):
     plt.text(1.1,-0.2,'size', horizontalalignment='center', verticalalignment='top', transform=axs_sz[1,0].transAxes, fontsize=major_fontsize)
     plt.savefig('outputs/histograms/experiment1_size.pdf')
 
-def experiment(alpha, epsilon, gamma, num_calib, M, unit, num_replicates_process, batch_size, cifar10_root, privatemodel, privateconformal):
+def experiment(alpha, epsilon, gamma, num_calib, m, cifar10_root, privatemodel, privateconformal):
     df_list = []
-    score_bins = np.linspace(0,1,M)
-    fname = f'.cache/opt_{privatemodel}_{privateconformal}_{alpha}_{epsilon}_{num_calib}_{M}bins_dataframe.pkl'
+    score_bins = np.linspace(0,1,m)
+    fname = f'.cache/opt_{privatemodel}_{privateconformal}_{alpha}_{epsilon}_{num_calib}_{m}bins_dataframe.pkl'
 
     df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$"])
     try:
@@ -128,11 +127,14 @@ def experiment(alpha, epsilon, gamma, num_calib, M, unit, num_replicates_process
         logits, labels = dataset_precomputed.tensors
         scores = (logits/T.cpu()).softmax(dim=1)
 
+        accuracy = (scores.argmax(dim=1) == labels).float().mean()
+        print(f"Private model: {privatemodel}, Accuracy: {accuracy}")
+
         with torch.no_grad():
             conformal_scores = get_conformal_scores(scores, labels)
             local_df_list = []
             for i in tqdm(range(num_trials)):
-                cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size, privateconformal)
+                cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gamma, score_bins, num_calib, privateconformal)
                 dict_local = {"$\\hat{s}$": shat,
                                 "coverage": cvg,
                                 "sizes": [szs],
@@ -144,10 +146,6 @@ def experiment(alpha, epsilon, gamma, num_calib, M, unit, num_replicates_process
             df = pd.concat(local_df_list, axis=0, ignore_index=True)
             df.to_pickle(fname)
     return df
-
-    #df_list = df_list + [df]
-
-    #plot_histograms(df_list,alpha,M,unit,num_calib,privatemodel,privateconformal,num_trials)
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
     calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
@@ -182,15 +180,11 @@ if __name__ == "__main__":
     alpha = 0.1
     epsilon = 8 # epsilon of the trained model 
     num_calib = 5000 
-    num_trials = 1000 
-    num_replicates_process =100000
+    num_trials = 100 
+    mstar, gammastar = get_optimal_gamma_m(num_calib, alpha, epsilon)
     
-    unit = int(np.floor(np.sqrt(num_calib)))
-    gamma, _ = get_optimal_gamma(num_calib,alpha,int((num_calib * epsilon) ** (2/3)),epsilon, num_replicates_process)
-    M = get_mstar(num_calib, alpha, epsilon, gamma, num_replicates_process)#np.floor(np.logspace(np.log(0.2*unit),np.log(unit**2), 6)).astype(int) # max number of bins
-
     df_list = []
     for privateconformal in privateconformals:
         for privatemodel in privatemodels:
-            df_list = df_list + [experiment(alpha, epsilon, gamma, num_calib, M, unit, num_replicates_process, batch_size=128, cifar10_root=cifar10_root, privatemodel=privatemodel, privateconformal=privateconformal)]
+            df_list = df_list + [experiment(alpha, epsilon, gammastar, num_calib, mstar, cifar10_root=cifar10_root, privatemodel=privatemodel, privateconformal=privateconformal)]
     plot_histograms(df_list,alpha)
