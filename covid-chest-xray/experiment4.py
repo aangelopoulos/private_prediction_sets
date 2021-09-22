@@ -14,7 +14,6 @@ import pickle as pkl
 from tqdm import tqdm
 from utils import *
 import seaborn as sns
-from core.concentration import *
 from core.private_conformal_utils import *
 import pdb
 
@@ -22,11 +21,11 @@ def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
     return conformal_scores 
 
-def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins, num_replicates_process):
-    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins):
+    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins)
     return shat 
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size):
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_calib):
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
     conformal_scores = conformal_scores[perm]
@@ -34,7 +33,7 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score
     calib_conformal_scores, val_conformal_scores = (1-conformal_scores[0:num_calib], 1-conformal_scores[num_calib:])
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
 
-    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins)
 
     corrects = (val_conformal_scores) < shat 
     sizes = ((val_raw_scores) < shat).sum(dim=1)
@@ -51,7 +50,7 @@ def plot_histograms(df_list,alpha):
     
     for i in range(len(df_list)):
         df = df_list[i]
-        print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
+        print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.mean(df.coverage)}")
         # Use the same binning for everybody 
         weights = np.ones((len(df),))/len(df)
         axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)
@@ -77,11 +76,11 @@ def plot_histograms(df_list,alpha):
     plt.tight_layout()
     plt.savefig( 'outputs/histograms/experiment4.pdf')
 
-def experiment(alpha, epsilon, num_calib, num_val, M, unit, num_replicates_process, batch_size, datasetpath):
+def experiment(alpha, epsilon, num_calib, num_val, datasetpath):
     df_list = []
-    gamma, _ = get_optimal_gamma(num_calib,alpha,int(M),epsilon,num_replicates_process)
-    score_bins = np.linspace(0,1,M)
-    fname = f'.cache/opt_{alpha}_{epsilon}_{num_calib}_{M}bins_dataframe.pkl'
+    mstar, gammastar = get_optimal_gamma_m(num_calib,alpha,epsilon)
+    score_bins = np.linspace(0,1,mstar)
+    fname = f'.cache/opt_{alpha}_{epsilon}_{num_calib}_{mstar}bins_dataframe.pkl'
 
     df = pd.DataFrame(columns = ["$\\hat{s}$","coverage","sizes","$\\alpha$","$\\epsilon$" ])
     try:
@@ -101,7 +100,7 @@ def experiment(alpha, epsilon, num_calib, num_val, M, unit, num_replicates_proce
             conformal_scores = get_conformal_scores(scores, labels)
             local_df_list = []
             for i in tqdm(range(num_trials)):
-                cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size)
+                cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gammastar, score_bins, num_calib)
                 dict_local = {"$\\hat{s}$": shat,
                                 "coverage": cvg,
                                 "sizes": [szs],
@@ -150,10 +149,5 @@ if __name__ == "__main__":
     num_calib = 1000 
     num_val = 500
     num_trials = 1000 
-    num_replicates_process =100000
-    
-    unit = (num_calib * epsilon)
 
-    Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
-
-    experiment(alpha, epsilon, num_calib, num_val, Mstar, unit, num_replicates_process, batch_size=128, datasetpath = datasetpath)
+    experiment(alpha, epsilon, num_calib, num_val, datasetpath = datasetpath)

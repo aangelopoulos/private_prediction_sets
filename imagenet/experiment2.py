@@ -14,7 +14,6 @@ import pickle as pkl
 from tqdm import tqdm
 from utils import *
 import seaborn as sns
-from core.concentration import *
 from core.private_conformal_utils import *
 import pdb
 
@@ -22,11 +21,11 @@ def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
     return conformal_scores 
 
-def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins, num_replicates_process):
-    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins):
+    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins)
     return shat 
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size):
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score_bins, num_calib, batch_size):
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
     conformal_scores = conformal_scores[perm]
@@ -34,7 +33,7 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score
     calib_conformal_scores, val_conformal_scores = (1-conformal_scores[0:num_calib], 1-conformal_scores[num_calib:])
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
 
-    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins)
 
     corrects = (val_conformal_scores) < shat 
     sizes = ((val_raw_scores) < shat).sum(dim=1)
@@ -70,7 +69,7 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     
     axs[0].set_xlabel('coverage')
     axs[0].set_ylabel('density')
-    axs[0].set_xlim([1-alpha-0.002,None])
+    #axs[0].set_xlim([1-alpha-0.002,None])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
     axs[1].legend()
@@ -80,10 +79,11 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     plt.tight_layout()
     plt.savefig( 'outputs/histograms/experiment2.pdf')
 
-def experiment(alpha, epsilon, num_calib, Ms, unit, num_replicates_process, batch_size, imagenet_val_dir):
+def experiment(alpha, epsilon, num_calib, Ms, unit, batch_size, imagenet_val_dir):
     df_list = []
+    uniform_scores = np.random.random((num_calib,)) #simulation to find optimal gamma
     for M in Ms:
-        gamma, _ = get_optimal_gamma(num_calib,alpha,int(M),epsilon,num_replicates_process)
+        gamma, _ = get_optimal_gamma(uniform_scores,num_calib,alpha,int(M),epsilon)
         score_bins = np.linspace(0,1,M)
         fname = f'.cache/opt_{alpha}_{epsilon}_{num_calib}_{M}bins_dataframe.pkl'
 
@@ -104,7 +104,7 @@ def experiment(alpha, epsilon, num_calib, Ms, unit, num_replicates_process, batc
                 conformal_scores = get_conformal_scores(scores, labels)
                 local_df_list = []
                 for i in tqdm(range(num_trials)):
-                    cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gamma, score_bins, num_replicates_process, num_calib, batch_size)
+                    cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, gamma, score_bins, num_calib, batch_size)
                     dict_local = {"$\\hat{s}$": shat,
                                     "coverage": cvg,
                                     "sizes": [szs],
@@ -152,11 +152,11 @@ if __name__ == "__main__":
     epsilon = 1
     num_calib = 30000 
     num_trials = 100 
-    num_replicates_process =100000
     
     unit = (num_calib * epsilon)
 
-    Mstar = get_mstar(num_calib, alpha, epsilon, 0.04, num_replicates_process) # max number of bins
-    Ms = np.floor(np.array([0.05*unit,0.1*unit,1*unit,10*unit,Mstar])).astype(int)
+    mstar, gammastar = get_optimal_gamma_m(num_calib, alpha, epsilon)
 
-    experiment(alpha, epsilon, num_calib, Ms, unit, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
+    Ms = np.floor(np.array([0.05*unit,0.1*unit,1*unit,10*unit,mstar])).astype(int)
+
+    experiment(alpha, epsilon, num_calib, Ms, unit, batch_size=128, imagenet_val_dir=imagenet_val_dir)

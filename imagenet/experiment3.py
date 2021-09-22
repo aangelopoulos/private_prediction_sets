@@ -14,24 +14,19 @@ import pickle as pkl
 from tqdm import tqdm
 from utils import *
 import seaborn as sns
-from core.concentration import *
 from core.private_conformal_utils import *
 
 def get_conformal_scores(scores, labels):
     conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
     return conformal_scores 
 
-def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins, num_replicates_process):
-    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+def get_shat_from_scores_private(scores, alpha, epsilon, gamma, score_bins):
+    shat = get_private_quantile(scores, alpha, epsilon, gamma, score_bins)
     return shat
 
-def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, num_replicates_process, num_calib, batch_size):
-    gamma, _ = get_optimal_gamma(num_calib,alpha,int((num_calib * epsilon)),epsilon,num_replicates_process)
-    gamma = max(gamma, 1e-4)
-    M = get_mstar(num_calib, alpha, epsilon, gamma, num_replicates_process) # max number of bins
-    M = min(M,1e4)
-    M = max(M,10)
-    score_bins = np.linspace(0,1,M)
+def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, num_calib, batch_size):
+    mstar, gammastar = get_optimal_gamma_m(num_calib, alpha, epsilon)
+    score_bins = np.linspace(0,1,mstar)
 
     total=conformal_scores.shape[0]
     perm = torch.randperm(conformal_scores.shape[0])
@@ -40,7 +35,7 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, num_replicat
     calib_conformal_scores, val_conformal_scores = (1-conformal_scores[0:num_calib], 1-conformal_scores[num_calib:])
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
 
-    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins, num_replicates_process)
+    shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gammastar, score_bins)
 
     corrects = (val_conformal_scores) < shat 
     sizes = ((val_raw_scores) < shat).sum(dim=1)
@@ -84,7 +79,7 @@ def plot_histograms(df_list,alpha,epsilons,num_calib):
     plt.tight_layout()
     plt.savefig( 'outputs/histograms/experiment3.pdf')
 
-def experiment(alpha, epsilons, num_calib, num_replicates_process, batch_size, imagenet_val_dir):
+def experiment(alpha, epsilons, num_calib, batch_size, imagenet_val_dir):
     df_list = []
     for epsilon in epsilons:
         fname = f'.cache/opt_{alpha}_{epsilon}_{num_calib}_dataframe.pkl'
@@ -106,7 +101,7 @@ def experiment(alpha, epsilons, num_calib, num_replicates_process, batch_size, i
                 conformal_scores = get_conformal_scores(scores, labels)
                 local_df_list = []
                 for i in tqdm(range(num_trials)):
-                    cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, num_replicates_process, num_calib, batch_size)
+                    cvg, szs, shat = trial_precomputed(conformal_scores, scores, alpha, epsilon, num_calib, batch_size)
                     dict_local = {"$\\hat{s}$": shat,
                                     "coverage": cvg,
                                     "sizes": [szs],
@@ -154,6 +149,5 @@ if __name__ == "__main__":
     epsilons = [0.5,1,5,10]
     num_calib = 30000 
     num_trials = 100
-    num_replicates_process =100000
 
-    experiment(alpha, epsilons, num_calib, num_replicates_process, batch_size=128, imagenet_val_dir=imagenet_val_dir)
+    experiment(alpha, epsilons, num_calib, batch_size=128, imagenet_val_dir=imagenet_val_dir)

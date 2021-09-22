@@ -1,4 +1,4 @@
-name: pps 
+name: pps2
 channels:
   - pytorch
 dependencies:
@@ -13,6 +13,7 @@ dependencies:
   - pandas=1.2.0
   - pillow=8.0.1 
   - seaborn=0.11.1
+  - tensorboard=2.5.0
   - tqdm=4.55.0
   - pip:
     - opacus
