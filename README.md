@@ -46,22 +46,5 @@ bash setup.sh
   For the <code>./imagenet</code> experiments, you will need to point the scripts towards the val directory of your local copy of the Imagenet dataset.
 </p>
 
-## Reproducing the model training 
-<p>
-  To train the <code>CIFAR-10</code> models used in our experiments from scratch, you will need to modify the <code>opacus</code> library directly. In particular, locate the directory containing the opacus library. For me, it is
-</p>
-
-```
-~/anaconda3/envs/pps/lib/python3.8/site-packages/opacus
-``` 
-
-<p>
-  Within this directory, modify line 395 of <code>privacy_engine.py</code> from <code>self.noise_multiplier * max_grad_norm,</code> to <code>2 * self.noise_multiplier * max_grad_norm,</code>  
-</p>
-
-<p>
-  This adjusts the training procedure to use the replacement definition of privacy, consistent with our paper.
-</p>
-
 ## License
 <a href="https://opensource.org/licenses/MIT" alt="License">MIT License</a>
