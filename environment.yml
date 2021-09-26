@@ -1,4 +1,4 @@
-name: pps2
+name: pps
 channels:
   - pytorch
 dependencies:
