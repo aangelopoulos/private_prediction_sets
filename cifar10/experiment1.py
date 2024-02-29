@@ -17,8 +17,8 @@ import seaborn as sns
 from core.private_conformal_utils import *
 
 def get_conformal_scores(scores, labels):
-    conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])]) 
-    return conformal_scores 
+    conformal_scores = torch.tensor([scores[i,labels[i]] for i in range(scores.shape[0])])
+    return conformal_scores
 
 def get_shat_from_scores(scores, alpha):
     return np.quantile(scores,1-alpha)
@@ -34,17 +34,17 @@ def trial_precomputed(conformal_scores, raw_scores, alpha, epsilon, gamma, score
     raw_scores = raw_scores[perm]
     calib_conformal_scores, val_conformal_scores = (1-conformal_scores[0:num_calib], 1-conformal_scores[num_calib:])
     calib_raw_scores, val_raw_scores = (1-raw_scores[0:num_calib], 1-raw_scores[num_calib:])
-    
+
     if privateconformal:
         shat = get_shat_from_scores_private(calib_conformal_scores, alpha, epsilon, gamma, score_bins)
     else:
         gamma = 0
         shat = get_shat_from_scores(calib_conformal_scores, alpha)
 
-    corrects = (val_conformal_scores) < shat 
+    corrects = (val_conformal_scores) < shat
     sizes = ((val_raw_scores) < shat).sum(dim=1)
 
-    return corrects.float().mean().item(), torch.tensor(sizes), shat 
+    return corrects.float().mean().item(), torch.tensor(sizes), shat
 
 def plot_histograms(df_list,alpha):
     fig_cvg, axs_cvg = plt.subplots(nrows=2,ncols=2,figsize=(6,6))
@@ -58,7 +58,7 @@ def plot_histograms(df_list,alpha):
     for i in range(len(df_list)):
         df = df_list[i]
         print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
-        # Use the same binning for everybody 
+        # Use the same binning for everybody
         weights = np.ones((len(df),))/len(df)
         axs_cvg[i % 2, i // 2].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, density=False, weights=weights)
         axs_cvg[i % 2, i // 2].set_xlim([1-alpha-0.02, 1.01])
@@ -70,7 +70,7 @@ def plot_histograms(df_list,alpha):
         lofb = sizes.min() - float(d)/2
         rolb = 11.5#sizes.max() + float(d)/2
         size_bins = np.arange(lofb,rolb,d)
-        
+
         weights = np.ones_like(sizes)/sizes.shape[0]
         axs_sz[i % 2, i // 2].hist(sizes, size_bins, alpha=0.7, density=False, weights=weights)
         axs_sz[i % 2, i // 2].set_xlim([0.5,10.5])
@@ -121,7 +121,7 @@ def experiment(alpha, epsilon, gamma, num_calib, m, cifar10_root, privatemodel, 
     except FileNotFoundError:
         dataset_precomputed = get_logits_dataset(privatemodel, 'CIFAR10', cifar10_root)
         print('Dataset loaded')
-        
+
         classes_array = get_cifar10_classes()
         T = platt_logits(dataset_precomputed)
         logits, labels = dataset_precomputed.tensors
@@ -148,25 +148,26 @@ def experiment(alpha, epsilon, gamma, num_calib, m, cifar10_root, privatemodel, 
     return df
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
-    calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
-    nll_criterion = nn.CrossEntropyLoss().cuda()
+    calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    nll_criterion = nn.CrossEntropyLoss().to(device)
 
-    T = nn.Parameter(torch.Tensor([1.3]).cuda())
+    T = nn.Parameter(torch.Tensor([1.3]).to(device))
 
     optimizer = optim.SGD([T], lr=lr)
     for iter in range(max_iters):
         T_old = T.item()
         for x, targets in calib_loader:
             optimizer.zero_grad()
-            x = x.cuda()
+            x = x.to(device)
             x.requires_grad = True
             out = x/T
-            loss = nll_criterion(out, targets.long().cuda())
+            loss = nll_criterion(out, targets.long().to(device))
             loss.backward()
             optimizer.step()
         if abs(T_old - T.item()) < epsilon:
             break
-    return T 
+    return T
 
 if __name__ == "__main__":
     sns.set(palette='pastel',font='serif')
@@ -174,15 +175,15 @@ if __name__ == "__main__":
     fix_randomness(seed=0)
 
     cifar10_root = './data/cifar10'
-    privateconformals = [False, True] 
+    privateconformals = [False, True]
     privatemodels = [False, True]
 
     alpha = 0.1
-    epsilon = 8 # epsilon of the trained model 
-    num_calib = 5000 
-    num_trials = 100 
+    epsilon = 8 # epsilon of the trained model
+    num_calib = 5000
+    num_trials = 100
     mstar, gammastar = get_optimal_gamma_m(num_calib, alpha, epsilon)
-    
+
     df_list = []
     for privateconformal in privateconformals:
         for privatemodel in privatemodels:

@@ -12,16 +12,16 @@ from tqdm import tqdm
 import random
 import pandas as pd
 import pdb
-from opacus.utils.module_modification import convert_batchnorm_modules
 from torchvision.datasets import CIFAR10
-from train_model import convnet
+from model_class import convnet
+from module_modification import convert_batchnorm_modules
 
 dirname = str(pathlib.Path(__file__).parent.absolute())
 
 def sort_sum(scores):
     I = scores.argsort(axis=1)[:,::-1]
     ordered = np.sort(scores,axis=1)[:,::-1]
-    cumsum = np.cumsum(ordered,axis=1) 
+    cumsum = np.cumsum(ordered,axis=1)
     return I, ordered, cumsum
 
 class AverageMeter(object):
@@ -80,16 +80,16 @@ def validate(val_loader, model, losses, print_bool):
     if print_bool:
         print('') #Endline
 
-    return risks.avg, sizes_arr 
+    return risks.avg, sizes_arr
 
 def risk_size(S,targets, losses):
     risk = 0
     size_arr = np.zeros((targets.shape[0],))
     for i in range(targets.shape[0]):
         if (targets[i].item() not in S[i]):
-            risk += losses[targets[i].item()] 
+            risk += losses[targets[i].item()]
         size_arr[i] = S[i].shape[0]
-    return float(risk)/targets.shape[0], size_arr 
+    return float(risk)/targets.shape[0], size_arr
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -123,34 +123,37 @@ def split2(dataset, n1, n2):
     return data1, data2
 
 def get_model(private=True, cache= dirname + '/.cache/'):
-    model = convnet(num_classes=10)
+    model = convert_batchnorm_modules(torchvision.models.resnet18(num_classes=10))
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     if private:
-        data = torch.load('./models/privatemodel_best.pth.tar')
+        data = torch.load('./models/privatemodel_best.pth.tar', map_location=device)
     else:
-        data = torch.load('./models/nonprivatemodel_best.pth.tar')
+        data = torch.load('./models/nonprivatemodel_best.pth.tar', map_location=device)
 
     model.load_state_dict(data['state_dict'])
-    model.cuda()
+    model.to(device)
     model.eval()
 
     return model
 
 # Computes logits and targets from a model and loader
 def get_logits_targets(model, loader):
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     logits = torch.zeros((len(loader.dataset), 10)) # 10 classes in CIFAR.
     labels = torch.zeros((len(loader.dataset),))
+    model = model.to(device)
     i = 0
     print(f'Computing logits for model (only happens once).')
     with torch.no_grad():
         for x, targets in tqdm(loader):
-            batch_logits = model(x.cuda()).detach().cpu()
+            batch_logits = model(x.to(device)).detach().cpu()
             logits[i:(i+x.shape[0]), :] = batch_logits
             labels[i:(i+x.shape[0])] = targets.cpu()
             i = i + x.shape[0]
-    
+
     # Construct the dataset
-    dataset_logits = torch.utils.data.TensorDataset(logits, labels.long()) 
+    dataset_logits = torch.utils.data.TensorDataset(logits, labels.long())
     return dataset_logits
 
 def get_logits_dataset(private, datasetname, datasetpath, cache= dirname + '/.cache/'):
@@ -187,7 +190,7 @@ def get_logits_dataset(private, datasetname, datasetpath, cache= dirname + '/.ca
     # Get the logits and targets
     dataset_logits = get_logits_targets(model, loader)
 
-    # Save the dataset 
+    # Save the dataset
     os.makedirs(os.path.dirname(fname), exist_ok=True)
     with open(fname, 'wb') as handle:
         pickle.dump(dataset_logits, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -201,10 +204,10 @@ def fix_randomness(seed=0):
     random.seed(seed)
 
 def get_cifar10_classes():
-    return ['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck'] 
+    return ['airplane','automobile','bird','cat','deer','dog','frog','horse','ship','truck']
 
 def get_metrics_precomputed(est_labels,labels,losses,num_classes):
     labels = torch.nn.functional.one_hot(labels,num_classes)
     empirical_losses = (losses.view(1,-1) * (labels * (1-est_labels))).sum(dim=1)
     sizes = est_labels.sum(dim=1)
-    return empirical_losses, sizes 
+    return empirical_losses, sizes

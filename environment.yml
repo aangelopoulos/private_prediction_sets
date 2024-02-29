@@ -2,18 +2,18 @@ name: pps
 channels:
   - pytorch
 dependencies:
-  - pip=20.3.3
-  - python=3.8.5
-  - numpy=1.19.2
-  - matplotlib=3.3.2
-  - scipy=1.5.2
-  - pytorch=1.7.1 
-  - cudatoolkit=10.2
-  - torchvision=0.8.2
-  - pandas=1.2.0
-  - pillow=8.0.1 
-  - seaborn=0.11.1
-  - tensorboard=2.5.0
-  - tqdm=4.55.0
+  - pip
+  - python
+  - numpy
+  - matplotlib
+  - scipy
+  - pytorch::pytorch 
+  - torchvision
+  - torchaudio
+  - pandas
+  - pillow
+  - seaborn
+  - tensorboard
+  - tqdm
   - pip:
     - opacus

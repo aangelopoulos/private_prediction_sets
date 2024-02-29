@@ -30,6 +30,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torchvision.datasets import CIFAR10
 from tqdm import tqdm
 
+from model_class import convnet
+
 logging.basicConfig(
     format="%(asctime)s:%(levelname)s:%(message)s",
     datefmt="%m/%d/%Y %H:%M:%S",
@@ -91,25 +93,6 @@ def setup(args):
 
 def cleanup():
     torch.distributed.destroy_process_group()
-
-
-def convnet(num_classes):
-    return nn.Sequential(
-        nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.AvgPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.AvgPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.AvgPool2d(kernel_size=2, stride=2),
-        nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-        nn.ReLU(),
-        nn.AdaptiveAvgPool2d((1, 1)),
-        nn.Flatten(start_dim=1, end_dim=-1),
-        nn.Linear(128, num_classes, bias=True),
-    )
 
 
 def save_checkpoint(state, is_best, filename="checkpoint.tar", nonprivate=True):
@@ -298,7 +281,7 @@ def main():
         generator=generator,
     )
 
-        
+
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
