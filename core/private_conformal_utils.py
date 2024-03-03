@@ -29,20 +29,21 @@ def hist_2_cdf(cumsum, bins, n):
 
 def get_private_quantile(scores, alpha, epsilon, gamma, bins):
     n = scores.shape[0]
+    epsilon_normed = epsilon*min(alpha, 1-alpha)
     # Get the quantile
     qtilde = get_qtilde(n, alpha, gamma, epsilon, bins.shape[0])
     scores = scores.squeeze()
     score_to_bin = np.digitize(scores,bins)
     binned_scores = bins[np.minimum(score_to_bin,bins.shape[0]-1)]
-    w1 = np.digitize(binned_scores, bins) 
+    w1 = np.digitize(binned_scores, bins)
     w2 = np.digitize(binned_scores, bins, right=True)
     # Clip bins
     w1 = np.maximum(np.minimum(w1,bins.shape[0]-1),0)
     w2 = np.maximum(np.minimum(w2,bins.shape[0]-1),0)
     lower_mass = np.bincount(w1,minlength=bins.shape[0]).cumsum()/qtilde
     upper_mass = (n-np.bincount(w2,minlength=bins.shape[0]).cumsum())/(1-qtilde)
-    w = np.maximum( lower_mass , upper_mass ) 
-    sampling_probabilities = softmax(-(epsilon/2)*w)
+    w = np.maximum( lower_mass , upper_mass )
+    sampling_probabilities = softmax(-(epsilon_normed/2)*w)
     # Check
     sampling_probabilities = sampling_probabilities/sampling_probabilities.sum()
     qhat = np.random.choice(bins,p=sampling_probabilities)
@@ -51,7 +52,7 @@ def get_private_quantile(scores, alpha, epsilon, gamma, bins):
 # Optimal gamma is a root.
 def get_optimal_gamma(scores,n,alpha,m,epsilon):
     a = alpha**2
-    b = - ( alpha*epsilon*(n+1)*(1-alpha)/2 + 2*alpha ) 
+    b = - ( alpha*epsilon*(n+1)*(1-alpha)/2 + 2*alpha )
     c = 1
     best_q = 1
     gamma1 = (-b + np.sqrt(b**2 - 4*a*c))/(2*a)
@@ -70,7 +71,7 @@ def get_optimal_gamma(scores,n,alpha,m,epsilon):
 def get_optimal_gamma_m(n, alpha, epsilon):
     candidates_m = np.logspace(4,6,50).astype(int)
     scores = np.random.rand(n,1)
-    best_m = int(1/alpha) 
+    best_m = int(1/alpha)
     best_gamma = 1
     best_q = 1
     for m in candidates_m:
@@ -84,7 +85,7 @@ def get_optimal_gamma_m(n, alpha, epsilon):
 if __name__ == "__main__":
     n = 5000
     alpha = 0.1
-    epsilon = 8 # removal definition, 5 is large.  usually we think of epsilon as 1 or 2.   
+    epsilon = 8 # removal definition, 5 is large.  usually we think of epsilon as 1 or 2.
     mstar, gammastar = get_optimal_gamma_m(n, alpha, epsilon)
     scores = np.random.random((n,))
     q = get_private_quantile(scores, alpha, epsilon, gammastar, np.linspace(0,1,mstar))
