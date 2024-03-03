@@ -13,7 +13,6 @@ from tqdm import tqdm
 import random
 import pandas as pd
 import pdb
-from opacus.utils.module_modification import convert_batchnorm_modules
 from torchvision.datasets import CIFAR10
 
 dirname = str(pathlib.Path(__file__).parent.absolute())

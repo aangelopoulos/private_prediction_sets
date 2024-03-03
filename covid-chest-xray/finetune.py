@@ -101,6 +101,7 @@ def set_parameter_requires_grad(model, feature_extracting):
 
 def save_checkpoint(state, is_best, filename="checkpoint.tar", private=False):
     root = f'./.cache/'
+    os.makedirs(root, exist_ok=True)
     root = root + 'private' if private else root + 'nonprivate'
     torch.save(state, root+filename)
     if is_best:

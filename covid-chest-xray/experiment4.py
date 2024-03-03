@@ -68,9 +68,11 @@ def plot_histograms(df_list,alpha):
     
     axs[0].set_xlabel('coverage')
     axs[0].set_ylabel('density')
-    axs[0].set_xlim([1-alpha-0.002,None])
+    axs[0].set_xlim([None, None])
     axs[0].axvline(x=1-alpha,c='#999999',linestyle='--',alpha=0.7)
     axs[1].set_xlabel('size')
+    axs[1].set_xticks([1,2])
+    axs[1].set_xticklabels(['1','2'])
     sns.despine(ax=axs[0],top=True,right=True)
     sns.despine(ax=axs[1],top=True,right=True)
     plt.tight_layout()
@@ -145,7 +147,7 @@ if __name__ == "__main__":
     datasetpath = './data/imagefolder'
 
     alpha = 0.1
-    epsilon = 8
+    epsilon = 10 
     num_calib = 1000 
     num_val = 500
     num_trials = 1000 

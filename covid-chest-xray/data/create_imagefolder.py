@@ -5,10 +5,9 @@ import pdb
 
 if __name__ == "__main__":
     df = pd.read_csv('./Chest_xray_Corona_Metadata.csv')
-    pdb.set_trace()
 
     for i in range(len(df)):
-        path_to_get = './images/'
+        path_to_get = './Coronahack-Chest-XRay-Dataset/Coronahack-Chest-XRay-Dataset/'
         path_to_save = './imagefolder/'
         if df.Dataset_type[i] == 'TRAIN':
             path_to_get += 'train/'
@@ -27,6 +26,7 @@ if __name__ == "__main__":
                 path_to_save += 'viral-pneumonia/'
             else:
                 continue
+        os.makedirs(path_to_save, exist_ok=True)
         path_to_get += df.X_ray_image_name[i]
         path_to_save += df.X_ray_image_name[i]
         shutil.copy(path_to_get, path_to_save)

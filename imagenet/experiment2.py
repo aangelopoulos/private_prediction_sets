@@ -51,13 +51,13 @@ def plot_histograms(df_list,alpha,Ms,unit,num_calib):
     for i in range(len(df_list)):
         df = df_list[i]
         M = Ms[i]
-        print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}")
         # Use the same binning for everybody 
         weights = np.ones((len(df),))/len(df)
         axs[0].hist(np.array(df['coverage'].tolist()), cvg_bins, alpha=0.7, weights=weights)
 
         # Sizes will be 10 times as big as risk, since we pool it over runs.
         sizes = torch.cat(df['sizes'].tolist(),dim=0).numpy()
+        print(f"alpha:{alpha}, epsilon:{epsilon}, coverage:{np.median(df.coverage)}, size:{np.median(sizes)}")
         d = np.diff(np.unique(sizes)).min()
         lofb = sizes.min() - float(d)/2
         rolb = sizes.max() + float(d)/2
@@ -122,19 +122,20 @@ def experiment(alpha, epsilon, num_calib, Ms, unit, batch_size, imagenet_val_dir
 
 def platt_logits(calib_dataset, max_iters=10, lr=0.01, epsilon=0.01):
     calib_loader = torch.utils.data.DataLoader(calib_dataset, batch_size=1024, shuffle=False, pin_memory=True) 
-    nll_criterion = nn.CrossEntropyLoss().cuda()
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    nll_criterion = nn.CrossEntropyLoss().to(device)
 
-    T = nn.Parameter(torch.Tensor([1.3]).cuda())
+    T = nn.Parameter(torch.Tensor([1.3]).to(device))
 
     optimizer = optim.SGD([T], lr=lr)
     for iter in range(max_iters):
         T_old = T.item()
         for x, targets in calib_loader:
             optimizer.zero_grad()
-            x = x.cuda()
+            x = x.to(device)
             x.requires_grad = True
             out = x/T
-            loss = nll_criterion(out, targets.long().cuda())
+            loss = nll_criterion(out, targets.long().to(device))
             loss.backward()
             optimizer.step()
         if abs(T_old - T.item()) < epsilon:
@@ -146,10 +147,10 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    imagenet_val_dir = '/scratch/group/ilsvrc/val' # TODO: Put your imagenet directory here
+    imagenet_val_dir = '/datasets/ilsvrc_2024-01-04_1601/' # TODO: Put your imagenet directory here
 
     alpha = 0.1
-    epsilon = 1
+    epsilon = 5 
     num_calib = 30000 
     num_trials = 100 
     

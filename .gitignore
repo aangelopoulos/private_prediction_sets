@@ -2,6 +2,8 @@ cifar10/outputs/
 covid-chest-xray/
 scripts/outputs/
 imagenet/outputs/
+covid-chest-xray/data/Coronahack-Chest-XRay-Dataset/
+covid-chest-xray/data/coronahack-chest-xraydataset.zip
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

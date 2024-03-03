@@ -143,7 +143,7 @@ if __name__ == "__main__":
     sns.set_style('white')
     fix_randomness(seed=0)
 
-    imagenet_val_dir = '/scratch/group/ilsvrc/val' # TODO: put your imagenet directory here
+    imagenet_val_dir = '/datasets/ilsvrc_2024-01-04_1601/' # TODO: put your imagenet directory here
 
     alpha = 0.1
     epsilons = [0.5,1,5,10]

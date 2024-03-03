@@ -49,14 +49,15 @@ def validate(val_loader, model, losses, print_bool):
         risks = AverageMeter('empirical losses')
         sizes = AverageMeter('RAPS size')
         sizes_arr = []
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
         # switch to evaluate mode
         model.eval()
         end = time.time()
         N = 0
         for i, (x, target) in enumerate(val_loader):
-            target = target.cuda()
+            target = target.to(device)
             # compute output
-            output, S = model(x.cuda())
+            output, S = model(x.to(device))
             # measure accuracy and record loss
             risk, size_arr = risk_size(S, target, losses)
 
@@ -102,7 +103,8 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 def data2tensor(data):
-    imgs = torch.cat([x[0].unsqueeze(0) for x in data], dim=0).cuda()
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    imgs = torch.cat([x[0].unsqueeze(0) for x in data], dim=0).to(device)
     targets = torch.cat([torch.Tensor([int(x[1])]) for x in data], dim=0).long()
     return imgs, targets
 
@@ -118,6 +120,7 @@ def split2(dataset, n1, n2):
     return data1, data2
 
 def get_model(modelname):
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     if modelname == 'ResNet18':
         model = torchvision.models.resnet18(pretrained=True, progress=True)
 
@@ -149,19 +152,20 @@ def get_model(modelname):
         raise NotImplementedError
 
     model.eval()
-    model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).to(device)
 
     return model
 
 # Computes logits and targets from a model and loader
 def get_logits_targets(model, loader):
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     logits = torch.zeros((len(loader.dataset), 1000)) # 1000 classes in Imagenet.
     labels = torch.zeros((len(loader.dataset),))
     i = 0
     print(f'Computing logits for model (only happens once).')
     with torch.no_grad():
         for x, targets in tqdm(loader):
-            batch_logits = model(x.cuda()).detach().cpu()
+            batch_logits = model(x.to(device)).detach().cpu()
             logits[i:(i+x.shape[0]), :] = batch_logits
             labels[i:(i+x.shape[0])] = targets.cpu()
             i = i + x.shape[0]
@@ -189,8 +193,8 @@ def get_logits_dataset(modelname, datasetname, datasetpath, cache= dirname + '/.
                                          std =[0.229, 0.224, 0.225])
                     ])
     
-    dataset = torchvision.datasets.ImageFolder(datasetpath, transform)
-    loader = torch.utils.data.DataLoader(dataset, batch_size = 32, shuffle=False, pin_memory=True)
+    dataset = torchvision.datasets.ImageNet(datasetpath, split='val', transform=transform)
+    loader = torch.utils.data.DataLoader(dataset, batch_size = 32, shuffle=True, pin_memory=True, num_workers=4)
 
     # Get the logits and targets
     dataset_logits = get_logits_targets(model, loader)
